@@ -30,6 +30,14 @@ Los iconos son pixel-art propio (una criatura azul con orejas, simétrica, sobre
 - Tiene que servirse por **https** (Vercel ya lo hace) o desde `localhost` para pruebas.
 - Abriendo `index.html` directamente como archivo (`file://`) no se puede instalar; el juego funciona igual, pero sin el service worker.
 
+## Publicación
+
+- Web: **https://juegostitch.vercel.app** (proyecto de Vercel `juegostitch`).
+- Repositorio: **https://github.com/PANDA09ZERO/Stitch** (rama `main`).
+- El proyecto de Vercel está conectado al repositorio: **cada `git push` a `main` publica una versión nueva sola**. Las demás ramas generan una vista previa con su propia dirección.
+- `.vercelignore` evita publicar la documentación interna (`*.md`) y los temporales; `vercel.json` hace que `index.html` y `sw.js` no se queden en caché.
+- Publicar a mano sigue siendo posible con `vercel deploy --prod` desde la carpeta del juego.
+
 ## Actualizaciones
 
 El service worker sirve el juego desde la caché al instante y descarga la versión nueva en segundo plano: **los cambios aparecen la segunda vez que se abre**. Al publicar cambios importantes, sube `VERSION` en `sw.js` (por ejemplo `smc-v2`) para que se borre la caché antigua. Si añades imágenes nuevas, añádelas también a la lista `ARCHIVOS` de `sw.js`.
