@@ -1,0 +1,7 @@
+# Configuración local de Vercel (se genera al publicar desde este equipo)
+.vercel
+# Archivos temporales de pruebas automáticas
+.playwright-mcp
+# Sistema
+.DS_Store
+Thumbs.db

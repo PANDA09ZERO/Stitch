@@ -1,0 +1,2738 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#10123a">
+<!-- App instalable en el móvil (PWA): manifiesto, iconos y modo pantalla completa en iPhone -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Maze Chase">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<title>Stitch Maze Chase</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M2 6 L11 13 L8 20 Z' fill='%234a7bd0'/%3E%3Cpath d='M30 6 L21 13 L24 20 Z' fill='%234a7bd0'/%3E%3Ccircle cx='16' cy='18' r='10' fill='%235b8def'/%3E%3Ccircle cx='12' cy='16' r='2.6' fill='%230a0f1f'/%3E%3Ccircle cx='20' cy='16' r='2.6' fill='%230a0f1f'/%3E%3Cellipse cx='16' cy='21' rx='3.2' ry='2.2' fill='%231b2f6b'/%3E%3C/svg%3E">
+<style>
+/* =====================================================================
+   ESTILO: "Recreativa tiki en la Federación Galáctica"
+   Paleta tropical nocturna + bordes de tinta y sombras duras de recreativa.
+   Lo llamativo es el título; el resto se mantiene sobrio.
+   ===================================================================== */
+:root{
+  --night:#10123a;      /* cielo nocturno de Kauai (fondo) */
+  --night2:#1b1f5e;     /* paneles */
+  --lagoon:#2de2e6;     /* laguna: acento frío, bordes */
+  --hibiscus:#ff3d7f;   /* hibisco: peligro, relieve del título */
+  --mango:#ffb627;      /* mango: acción principal, foco */
+  --sand:#fff1d0;       /* arena: texto */
+  --ink:#070821;        /* tinta: contornos y sombras duras */
+  --leaf:#3ddc84;       /* hoja: aciertos */
+  --muted:#b9bde8;      /* texto secundario */
+  --pixel:'Press Start 2P',monospace;
+  /* compatibilidad con nombres anteriores */
+  --turq:var(--lagoon);--coral:var(--hibiscus);--pink:var(--hibiscus);--dark:var(--night);--panel:var(--night2)
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{height:100%;width:100%;overflow:hidden;background:var(--night);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--sand)}
+:focus-visible{outline:3px solid var(--mango);outline-offset:2px}
+#app{display:flex;flex-direction:column;height:100dvh;width:100vw;overflow:hidden}
+
+/* ===== HUD ===== */
+#hud{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--night2);border-bottom:3px solid var(--ink);box-shadow:inset 0 -2px 0 var(--lagoon);flex-shrink:0;z-index:5}
+#hud .stat{display:flex;align-items:center;gap:6px;background:var(--ink);padding:5px 8px;border-radius:4px;font-family:var(--pixel);font-size:clamp(9px,1.6vw,12px);line-height:1;color:var(--sand);white-space:nowrap}
+#hud .stat:nth-child(4){margin-right:auto}
+#hud .lives{color:#ffd0dd}
+#hud button{font-family:var(--pixel);background:var(--ink);color:var(--sand);border:2px solid var(--lagoon);border-radius:4px;width:44px;height:40px;cursor:pointer;font-size:15px;box-shadow:0 3px 0 #000}
+#hud button:active{transform:translateY(2px);box-shadow:0 1px 0 #000}
+#canvasWrap{flex:1;position:relative;overflow:hidden;min-height:0;background:#000}
+#game{display:block;width:100%;height:100%;touch-action:none;image-rendering:pixelated;image-rendering:crisp-edges}
+
+/* ===== Panel inferior: pregunta y controles ===== */
+#bottom{flex-shrink:0;background:var(--night2);border-top:3px solid var(--ink);box-shadow:inset 0 2px 0 var(--lagoon);padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+#questionPanel{text-align:center;font-weight:800;font-size:clamp(15px,2.8vw,20px);color:var(--sand);min-height:26px;letter-spacing:.2px}
+#subPanel{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}
+#powerStatus{color:var(--mango);font-weight:700}
+#hint{font-size:11px;color:var(--muted)}
+#dpad{display:none;align-items:center;justify-content:center;gap:6px;margin-top:4px;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px)}
+#dpad button{width:52px;height:52px;border-radius:6px;border:3px solid var(--ink);background:var(--lagoon);color:var(--ink);font-size:20px;font-weight:900;cursor:pointer;touch-action:none;box-shadow:0 4px 0 var(--ink)}
+#dpad button:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink);background:var(--mango)}
+
+/* ===== Pantallas superpuestas ===== */
+.overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:20;padding:16px;
+  background:radial-gradient(circle at 20% 15%,rgba(255,61,127,.18),transparent 45%),radial-gradient(circle at 85% 90%,rgba(45,226,230,.16),transparent 50%),rgba(7,8,33,.94)}
+.card{position:relative;background:var(--night);
+  background-image:radial-gradient(rgba(255,241,208,.07) 1px,transparent 1.2px);background-size:14px 14px;
+  border:3px solid var(--lagoon);border-radius:6px;padding:20px 18px 0;max-width:720px;width:100%;max-height:92vh;overflow:auto;text-align:center;
+  box-shadow:0 0 0 3px var(--ink),8px 8px 0 3px var(--ink)}
+.card>*:last-child{margin-bottom:18px}
+.card>.actions:last-child{margin-bottom:0}
+.card h1{font-family:var(--pixel);font-size:clamp(15px,3.6vw,24px);line-height:1.35;color:var(--mango);margin-bottom:10px;
+  text-shadow:2px 2px 0 var(--hibiscus),4px 4px 0 var(--ink)}
+.card h2{font-family:var(--pixel);font-size:clamp(10px,2vw,12px);color:var(--sand);margin:18px 0 8px;line-height:1.5}
+.card p{line-height:1.5}
+.summary{font-size:15px;color:var(--sand);line-height:1.8}
+.summary b{color:var(--mango)}
+
+/* ===== Título de la pantalla de inicio (el elemento estrella) ===== */
+.marquee{margin:4px 0 0}
+.marquee .big{display:block;font-size:clamp(30px,8.5vw,58px);line-height:1.05;color:var(--mango);letter-spacing:2px;
+  text-shadow:1px 1px 0 var(--hibiscus),2px 2px 0 var(--hibiscus),3px 3px 0 var(--hibiscus),4px 4px 0 var(--hibiscus),5px 5px 0 var(--ink),6px 6px 0 var(--ink),7px 7px 0 var(--ink)}
+.marquee .small{display:block;margin-top:10px;font-size:clamp(12px,3vw,20px);color:var(--lagoon);letter-spacing:3px;text-shadow:3px 3px 0 var(--ink)}
+.waves{height:12px;margin:14px -18px 12px;
+  background:
+    radial-gradient(circle at 8px -2px,transparent 7px,var(--lagoon) 7.5px,var(--lagoon) 9px,transparent 9.5px) 0 0/16px 12px repeat-x,
+    linear-gradient(var(--night2),var(--night2));
+  animation:waves 3s steps(16) infinite}
+@keyframes waves{to{background-position:16px 0,0 0}}
+.tagline{color:var(--muted);max-width:52ch;margin:0 auto 6px;font-size:14px}
+.modeTag{display:inline-block;padding:4px 10px;border-radius:4px;background:var(--ink);border:2px solid var(--night2);font-size:12px;margin:6px;color:var(--muted)}
+.toggle{display:flex;align-items:center;gap:8px;justify-content:center;margin:6px 0;font-size:13px;color:var(--muted)}
+.toggle input{accent-color:var(--mango);width:16px;height:16px}
+
+/* Pasos numerados (1, 2, 3…): el contador solo cuenta los pasos visibles */
+#startOverlay .card{counter-reset:paso}
+#startOverlay h2.step{counter-increment:paso;display:flex;align-items:center;justify-content:center;gap:10px}
+#startOverlay h2.step::before{content:counter(paso);display:inline-grid;place-items:center;width:24px;height:24px;background:var(--hibiscus);color:var(--ink);border:2px solid var(--ink);border-radius:4px;font-size:11px;box-shadow:2px 2px 0 var(--ink)}
+
+/* ===== Personajes, estilos y fichas ===== */
+.chars{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin:8px 0}
+.charCard{font:inherit;color:inherit;background:var(--night2);border:3px solid var(--ink);border-radius:6px;padding:10px;width:150px;cursor:pointer;transition:transform .12s,border-color .12s;box-shadow:4px 4px 0 var(--ink)}
+.charCard:hover{border-color:var(--muted)}
+.charCard.sel{border-color:var(--mango);transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink)}
+.charCard canvas{width:90px;height:90px;display:block;margin:0 auto}
+.charCard .name{font-family:var(--pixel);font-size:10px;line-height:1.5;margin-top:8px;color:var(--sand)}
+.charCard.sel .name{color:var(--mango)}
+.charCard .stat{font-size:11px;color:var(--muted);margin-top:4px}
+.skins{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:6px 0}
+.skinBtn{background:var(--night2);border:2px solid var(--ink);border-radius:4px;padding:6px 10px;color:var(--sand);cursor:pointer;font-size:12px;font-weight:800;min-width:106px;box-shadow:3px 3px 0 var(--ink)}
+.skinBtn:hover{border-color:var(--muted)}
+.skinBtn.sel{border-color:var(--mango);background:#2a2350;color:var(--mango)}
+.skinBtn small{display:block;color:var(--muted);font-weight:400;font-size:10px;margin-top:2px}
+.profile{background:var(--ink);border-left:4px solid var(--lagoon);border-radius:4px;padding:10px 14px;margin:10px auto;max-width:560px;text-align:left;font-size:13px;line-height:1.55}
+.profile .ptitle{color:var(--mango);font-weight:800;font-size:14px;margin-bottom:4px}
+.profile .prow{margin:3px 0;color:var(--sand)}
+.profile .plabel{color:var(--lagoon);font-weight:800}
+.profile .good{color:var(--leaf)}
+.profile .bad{color:#ff8fb1}
+
+/* ===== Botones de recreativa ===== */
+.btn{font-family:var(--pixel);font-size:clamp(10px,2vw,12px);line-height:1.4;background:var(--mango);color:var(--ink);border:3px solid var(--ink);border-radius:4px;padding:12px 18px;cursor:pointer;margin:6px;box-shadow:0 5px 0 var(--ink);transition:transform .06s}
+.btn:hover{filter:brightness(1.08)}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+.btn.secondary{background:var(--lagoon)}
+.btn.danger{background:var(--hibiscus);color:var(--ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none;filter:none}
+/* Barra de acciones fija al pie del menú: jugar siempre está a la vista */
+.actions{position:sticky;bottom:0;margin:14px -18px 0;padding:10px 12px 12px;background:var(--night);border-top:3px solid var(--ink);box-shadow:0 -2px 0 var(--lagoon) inset;z-index:2;display:flex;flex-wrap:wrap;justify-content:center}
+.meta{font-size:12px;color:var(--muted);margin-top:14px}
+.meta b{color:var(--mango);font-family:var(--pixel);font-size:11px}
+
+/* ===== Barra de tiempo (segmentada, estilo recreativa) ===== */
+#timeBar{height:8px;background:var(--ink);flex-shrink:0;overflow:hidden;position:relative}
+#timeBar::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 10px,var(--ink) 10px 12px);pointer-events:none}
+#timeFill{height:100%;width:100%;background:var(--leaf);transition:width .25s linear,background .3s}
+#timeFill.warn{background:var(--mango)}
+#timeFill.danger{background:var(--hibiscus);animation:pulse .5s infinite alternate}
+#hud .stat.danger{background:var(--hibiscus);color:var(--ink);animation:pulse .5s infinite alternate}
+@keyframes pulse{from{opacity:1}to{opacity:.5}}
+
+/* Líneas de barrido de pantalla CRT */
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:999;background:repeating-linear-gradient(0deg,rgba(0,0,0,.10) 0px,rgba(0,0,0,.10) 1px,transparent 1px,transparent 3px);mix-blend-mode:multiply}
+
+/* ===== Móvil en horizontal (pantallas bajas) =====
+   El panel inferior pasa a ser una columna lateral y el laberinto usa toda la altura. */
+@media (orientation:landscape) and (max-height:520px){
+  #app{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto minmax(0,1fr)}
+  #hud,#timeBar{grid-column:1 / -1}
+  #hud{padding:4px 10px}
+  #canvasWrap{grid-column:1;grid-row:3}
+  #bottom{grid-column:2;grid-row:3;width:clamp(170px,26vw,240px);border-top:none;border-left:3px solid var(--ink);box-shadow:inset 2px 0 0 var(--lagoon);justify-content:center;overflow:hidden}
+  #questionPanel{font-size:14px}
+  .answers{grid-template-columns:1fr;gap:4px}
+  .answers li{font-size:13px;padding:3px 6px}
+  .answers b{min-width:18px;height:18px;font-size:9px}
+  #subPanel{flex-direction:column;align-items:center;text-align:center;font-size:11px}
+  #deviceHint,#hint{display:none}
+  #dpad{grid-template-columns:repeat(3,48px);grid-template-rows:repeat(3,48px)}
+  #dpad button{width:48px;height:48px}
+  #dpad div[style]{width:48px!important;height:48px!important}
+  .marquee .big{font-size:28px}
+}
+@media (max-width:420px){
+  #hud .stat{padding:5px 6px;gap:4px}
+  #hud button{width:40px;height:40px}
+  .charCard{width:104px;padding:8px}
+  .charCard canvas{width:72px;height:72px}
+  .charCard .name{font-size:8px}
+}
+
+/* ===== Pausa de lectura: resalta la pregunta y las respuestas ===== */
+#bottom.reading #questionPanel{color:var(--mango)}
+#bottom.reading .answers li{border-color:var(--mango);animation:readGlow 1s ease-in-out infinite alternate}
+@keyframes readGlow{from{box-shadow:0 0 0 0 rgba(255,182,39,0)}to{box-shadow:0 0 0 2px rgba(255,182,39,.35)}}
+/* ===== Respuestas A/B/C/D bajo la pregunta ===== */
+.answers{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:6px;max-width:640px;width:100%;margin:0 auto}
+.answers li{display:flex;align-items:center;gap:8px;background:var(--ink);border:2px solid #2a2f72;border-radius:4px;padding:5px 8px;font-size:clamp(14px,3.6vw,17px);font-weight:700;color:var(--sand);min-width:0}
+.answers li span{overflow-wrap:break-word;line-height:1.2;min-width:0}
+.answers b{font-family:var(--pixel);font-size:11px;color:var(--ink);background:var(--mango);border-radius:3px;min-width:22px;height:22px;display:inline-grid;place-items:center;flex-shrink:0}
+@media (max-width:600px){ #hint,#deviceHint{display:none} #subPanel{justify-content:center} }
+/* Móvil en horizontal: columna lateral estrecha → respuestas en una columna y todo más
+   compacto para que pregunta, respuestas y cruceta quepan sin cortarse.
+   (Va después de las reglas generales de .answers para poder sobrescribirlas.) */
+@media (orientation:landscape) and (max-height:520px){
+  #bottom{padding:6px 8px;gap:4px}
+  #questionPanel{font-size:13px;min-height:0;line-height:1.25}
+  .answers{grid-template-columns:1fr;gap:3px}
+  .answers li{font-size:13px;padding:2px 6px;gap:6px;border-width:1px}
+  .answers b{min-width:17px;height:17px;font-size:8px}
+  #dpad{grid-template-columns:repeat(3,42px);grid-template-rows:repeat(3,42px);gap:4px;margin-top:2px}
+  #dpad button{width:42px;height:42px}
+  #dpad div[style]{width:42px!important;height:42px!important}
+  #powerStatus:empty{display:none}
+}
+/* ===== Instalar en el móvil ===== */
+.installBox{margin-top:14px}
+.btn.ghost{background:transparent;color:var(--sand);border-color:var(--lagoon);box-shadow:0 5px 0 var(--ink)}
+.btn.ghost:hover{background:rgba(45,226,230,.12)}
+/* ===== Iconos pixel-art ===== */
+.pxi{display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;flex-shrink:0}
+[data-icon]{display:inline-flex}
+.btn .pxi{margin-right:6px}
+#hud button .pxi{width:18px;height:18px;vertical-align:middle}
+#dpad button .pxi{width:22px;height:22px}
+/* ===== Selector de nivel ===== */
+.levels{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:6px 0}
+.lvlBtn{position:relative;background:var(--night2);border:2px solid var(--ink);border-radius:4px;padding:7px 4px 6px;color:var(--sand);cursor:pointer;font-size:11px;font-weight:800;width:76px;box-shadow:3px 3px 0 var(--ink)}
+.lvlBtn:hover{border-color:var(--muted)}
+.lvlBtn .ico{display:block;line-height:0;margin:0 auto 4px}
+.lvlBtn .ico .pxi{width:26px;height:26px}
+.lvlBtn.sel{border-color:var(--mango);color:var(--mango);background:#2a2350}
+.lvlBtn .done{position:absolute;top:2px;right:5px;color:var(--leaf);font-size:12px}
+#levelPickName{font-size:13px;color:var(--muted);min-height:18px}
+
+/* ===== Menú de pausa ===== */
+.menuBtns{display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:10px}
+.menuBtns .btn{min-width:260px}
+
+/* ===== Top 5 ===== */
+.top5{list-style:none;margin:8px auto;max-width:380px;font-size:12px;text-align:left;padding:0}
+.top5 li{display:flex;justify-content:space-between;gap:8px;padding:5px 8px;border-radius:4px;color:var(--sand)}
+.top5 li:nth-child(odd){background:rgba(255,241,208,.05)}
+.top5 li.new{background:var(--mango);color:var(--ink);font-weight:800}
+.top5 li.new .who{color:var(--ink)}
+.top5 .who{color:var(--muted);font-size:11px}
+
+/* Respeta "reducir movimiento" del sistema */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div class="stat"><span data-icon="star"></span><span id="score">0</span></div>
+    <div class="stat lives"><span data-icon="heart"></span><span id="lives">5</span></div>
+    <div class="stat" id="timerStat"><span data-icon="clock"></span><span id="timer">90</span></div>
+    <div class="stat"><span id="lvlLabel">Nivel</span> <span id="lvl">1</span></div>
+    <button id="pauseBtn" aria-label="Pausa y menú"><span data-icon="pause"></span></button>
+    <button id="muteBtn" aria-label="Silenciar sonido"><span data-icon="sound"></span></button>
+  </div>
+  <div id="timeBar"><div id="timeFill"></div></div>
+  <div id="canvasWrap"><canvas id="game" role="img" aria-label="Laberinto del juego. Lleva a tu personaje a la zona A, B, C o D con la respuesta correcta."></canvas></div>
+  <div id="bottom">
+    <div id="questionPanel" aria-live="polite">Cargando...</div>
+    <ol id="answers" class="answers" aria-label="Respuestas"></ol>
+    <div id="subPanel">
+      <span id="powerStatus"></span>
+      <span id="deviceHint"></span>
+    </div>
+    <div id="dpad">
+      <div></div><button data-dir="up" aria-label="Arriba"><span data-icon="up" data-mono="k"></span></button><div></div>
+      <button data-dir="left" aria-label="Izquierda"><span data-icon="left" data-mono="k"></span></button><div style="width:52px;height:52px"></div><button data-dir="right" aria-label="Derecha"><span data-icon="right" data-mono="k"></span></button>
+      <div></div><button data-dir="down" aria-label="Abajo"><span data-icon="down" data-mono="k"></span></button><div></div>
+    </div>
+    <div id="hint"></div>
+  </div>
+</div>
+
+<div id="startOverlay" class="overlay" role="dialog" aria-modal="true" aria-label="Menú de inicio">
+  <div class="card">
+    <h1 class="marquee"><span class="big">Stitch</span><span class="small">Maze Chase</span></h1>
+    <div class="waves" aria-hidden="true"></div>
+    <p class="tagline">Corre a la respuesta correcta en inglés antes de que te atrapen los villanos de la Federación.</p>
+    <div id="modeTag" class="modeTag">Detectando dispositivo...</div>
+    <div class="toggle">
+      <label for="touchToggle">Controles táctiles:</label>
+      <input type="checkbox" id="touchToggle">
+      <span id="touchLabel">Auto</span>
+    </div>
+    <h2 class="step">Elige personaje</h2>
+    <div class="chars" id="charSelect"></div>
+    <div class="profile" id="charProfile"></div>
+    <div id="skinBox" style="display:none">
+      <h2 class="step">Elige el estilo de Stitch</h2>
+      <div class="skins" id="skinList"></div>
+      <div class="profile" id="skinProfile"></div>
+    </div>
+    <h2 class="step">Elige dónde empezar</h2>
+    <div class="levels" id="levelSelect"></div>
+    <div id="levelPickName"></div>
+    <div id="installBox" class="installBox" hidden>
+      <button class="btn ghost" id="installBtn" type="button"><span data-icon="download"></span>Instalar en el móvil</button>
+      <p id="iosHint" class="meta" hidden>En iPhone o iPad: abre el juego en Safari, pulsa <b>Compartir</b> y luego <b>Añadir a pantalla de inicio</b>.</p>
+    </div>
+    <p class="meta">Récord: <b id="bestScore">0</b></p>
+    <ol class="top5" id="topListStart"></ol>
+    <p class="meta">Teclado: flechas o WASD. Móvil: cruceta o desliza el dedo. Mando: cruceta o stick.</p>
+    <div class="actions">
+      <button class="btn" id="startBtn">¡Comenzar aventura!</button>
+      <button class="btn secondary" id="survivalBtn"><span data-icon="infinity" data-mono="k"></span>Supervivencia</button>
+    </div>
+  </div>
+</div>
+
+<div id="pauseOverlay" class="overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
+  <div class="card" style="max-width:420px">
+    <h1 id="pauseTitle">Pausa</h1>
+    <p id="pauseInfo" style="color:#bcd"></p>
+    <div class="menuBtns">
+      <button class="btn" id="resumeBtn"><span data-icon="play" data-mono="k"></span>Continuar</button>
+      <button class="btn secondary" id="skipBtn"><span data-icon="next" data-mono="k"></span>Siguiente nivel</button>
+      <button class="btn secondary" id="restartLvlBtn"><span data-icon="restart" data-mono="k"></span>Reiniciar nivel</button>
+      <button class="btn danger" id="menuBtn"><span data-icon="home" data-mono="k"></span>Volver al menú</button>
+    </div>
+    <p style="font-size:11px;color:#8af;margin-top:8px">P / Esc: continuar · Volver al menú no guarda la puntuación</p>
+  </div>
+</div>
+
+<div id="levelOverlay" class="overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="levelTitle">
+  <div class="card">
+    <h1 id="levelTitle">Nivel 1</h1>
+    <p id="levelDesc" style="color:#bcd"></p>
+    <div id="levelSummary" class="summary"></div>
+    <button class="btn" id="nextLevelBtn">Continuar</button>
+    <button class="btn danger" id="levelMenuBtn"><span data-icon="home" data-mono="k"></span>Menú</button>
+  </div>
+</div>
+
+<div id="endOverlay" class="overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="endTitle">
+  <div class="card">
+    <h1 id="endTitle">¡Victoria!</h1>
+    <div id="endSummary" class="summary"></div>
+    <h2 style="font-size:15px"><span data-icon="trophy"></span> Top 5</h2>
+    <ol class="top5" id="topListEnd"></ol>
+    <button class="btn" id="replayBtn">Jugar de nuevo</button>
+    <button class="btn danger" id="endMenuBtn"><span data-icon="home" data-mono="k"></span>Menú</button>
+  </div>
+</div>
+
+<script>
+// ===================== CONFIG =====================
+const LEVELS = [
+  {
+    name:'Playa de Kauai', icon:'palm', theme:{wall:'#c9a24a',path:'#f3e6c9',bg:'#0b5c7a',accent:'#00d4ff'},
+    rows:[
+      "#####################",
+      "#P.A.......#.......B#",
+      "#.#.###.#.#.###.#.#.#",
+      "#.#.....#.#.....#.#.#",
+      "#.#.###.#.#.###.#.#.#",
+      "#..E..#...O...#..E..#",
+      "#####.#.#####.#.#####",
+      "#.....#...C...#.....#",
+      "#.#.###.#.#.###.#.#.#",
+      "#.#.....#.#.....#.#.#",
+      "#.#.###.#.#.###.#.#.#",
+      "#D.........#........#",
+      "#####################"
+    ],
+    enemies:[{type:'gantu',speed:.9},{type:'pleakley',speed:.85}],
+    questions:3, time:90
+  },
+  {
+    name:'Casa de Lilo y Nani', icon:'house', theme:{wall:'#6b4a2b',path:'#efe0c8',bg:'#3a2a1a',accent:'#ff6b6b'},
+    rows:[
+      "#####################",
+      "#P.A.......#.......B#",
+      "#.#####.#.#.#####.#.#",
+      "#.#.....#.#.....#.#.#",
+      "#.#####.#.#.#####.#.#",
+      "#..E..#...O...#..E..#",
+      "#####.#.#####.#.#####",
+      "#..K..#...C...#.....#",
+      "#.#####.#.#.#####.#.#",
+      "#.#..X..#.#.....#.#.#",
+      "#.#####.#.#.#####.#.#",
+      "#..E..#...U...#.....#",
+      "#..........#.......D#",
+      "#####################"
+    ],
+    enemies:[{type:'gantu',speed:1},{type:'jumba',speed:.9},{type:'pleakley',speed:.9}],
+    questions:4, time:100
+  },
+  {
+    name:'Nave Galáctica', icon:'rocket', theme:{wall:'#2a3a6a',path:'#1a2244',bg:'#05081a',accent:'#b388ff'},
+    rows:[
+      "#####################",
+      "#P.A..###..#..###.B#",
+      "#.#.#.....#.....#.#.#",
+      "#.#.###.#.#.#.###.#.#",
+      "#.....#.#.#.#.#.....#",
+      "#.###.#.#.#.#.#.###.#",
+      "#..E..#...O...#..E..#",
+      "#####.#.#####.#.#####",
+      "#.....#...C...#.....#",
+      "#.###.#.#.#.#.#.###.#",
+      "#.....#.#.#.#.#.....#",
+      "#.#.###.#.#.#.###.#.#",
+      "#.#.#.....#.....#.#.#",
+      "#D..###..#..###....#",
+      "#####################"
+    ],
+    enemies:[{type:'gantu',speed:1.15},{type:'jumba',speed:1.05},{type:'pleakley',speed:1.05},{type:'reuben',speed:1.1}],
+    questions:4, time:110
+  },
+  {
+    name:'Luau Nocturno', icon:'flower', theme:{wall:'#4a2a6a',path:'#2a1a4a',bg:'#1a0a2a',accent:'#ff5fa2'},
+    rows:[
+      "#####################",
+      "#P.A..T....#....T.B#",
+      "#.#.#.....#.....#.#.#",
+      "#.#.###.#.#.#.###.#.#",
+      "#.....#.#.#.#.#.....#",
+      "#.###.#.#.#.#.#.###.#",
+      "#..E..#...O...#..E..#",
+      "#####.#.#####.#.#####",
+      "#.....#...C...#.....#",
+      "#.###.#.#.#.#.#.###.#",
+      "#.....#.#.#.#.#.....#",
+      "#.#.###.#.#.#.###.#.#",
+      "#.#.#.....#.....#.#.#",
+      "#D..###.....###.....#".replace('E',' '),
+      "#####################"
+    ],
+    enemies:[{type:'gantu',speed:1.2},{type:'jumba',speed:1.1},{type:'pleakley',speed:1.1},{type:'reuben',speed:1.2}],
+    questions:5, time:100
+  },
+  {
+    name:'Estación Espacial', icon:'satellite', theme:{wall:'#3a4a6a',path:'#1a2a4a',bg:'#050814',accent:'#00d4ff'},
+    rows:[
+      "#####################",
+      "#P.A..###..#..###.B#",
+      "#.#.#.T...#...T.#.#.#",
+      "#.#.###.#.#.#.###.#.#",
+      "#.....#.#.#.#.#.....#",
+      "#.###.#.#.#.#.#.###.#",
+      "#..E..#...U...#..E..#",
+      "#####.#.#####.#.#####",
+      "#..K..#...C...#.....#",
+      "#.###.#.#.#.#.#.###.#",
+      "#....X#.#.#.#.#.....#",
+      "#.#.###.#.#.#.###.#.#",
+      "#.#.#.T...#...T.#.#.#",
+      "#D..###..#..###....#",
+      "#####################"
+    ],
+    enemies:[{type:'gantu',speed:1.25},{type:'jumba',speed:1.15},{type:'pleakley',speed:1.15},{type:'reuben',speed:1.25}],
+    questions:5, time:95
+  },
+  {
+    name:'Volcán Kīlauea', icon:'volcano', theme:{wall:'#3b2626',path:'#5c4033',bg:'#1a0600',accent:'#ff7b00'},
+    lava:true,          // muros con grietas de lava que brillan
+    portalTo:[1,2,0],   // 3 portales en ciclo: 1 → 2 → 3 → 1 (orden de lectura del mapa)
+    rows:[
+      "#####################",
+      "#P..A...#...#...B...#",
+      "#.###.#.#.#.#.#.###.#",
+      "#.#...#...T...#...#.#",
+      "#.#.#####.#.#####.#.#",
+      "#...#..E..#..E..#...#",
+      "###.#.###.#.###.#.###",
+      "#T....#..O.U..#....T#",
+      "###.#.###.#.###.#.###",
+      "#...#.....#.....#...#",
+      "#.#.#####.#.#####.#.#",
+      "#.#...#..K#X..#...#.#",
+      "#.###.#.#.#.#.#.###.#",
+      "#D......#...C.......#",
+      "#####################"
+    ],
+    enemies:[{type:'gantu',speed:1.3},{type:'jumba',speed:1.2},{type:'pleakley',speed:1.2},{type:'reuben',speed:1.3}],
+    questions:5, time:95
+  },
+  {
+    name:'Jefe Final: Gran Consejo', icon:'crown', theme:{wall:'#6a2a3a',path:'#3a1a2a',bg:'#1a0508',accent:'#ff6b6b'},
+    rows:[
+      "#####################",
+      "#P.A..###..#..###.B#",
+      "#.#.#.....#.....#.#.#",
+      "#.#.###.#.#.#.###.#.#",
+      "#.....#.#.#.#.#.....#",
+      "#.###.#.#.#.#.#.###.#",
+      "#..E..#...O...#..E..#",
+      "#####.#.#####.#.#####",
+      "#.....#...C...#.....#",
+      "#.###.#.#.#.#.#.###.#",
+      "#.....#.#.#.#.#.....#",
+      "#.#.###.#.#.#.###.#.#",
+      "#.#.#.....#.....#.#.#",
+      "#D..###..#..###....#",
+      "#####################"
+    ],
+    enemies:[{type:'gantu',speed:1.4},{type:'jumba',speed:1.3},{type:'pleakley',speed:1.3},{type:'reuben',speed:1.4},{type:'boss',speed:1.5}],
+    questions:6, time:90
+  }
+];
+
+LEVELS.forEach(l=>{
+  const w=Math.max(...l.rows.map(r=>r.length));
+  l.rows=l.rows.map(r=> r+' '.repeat(w-r.length));
+});
+const BOSS_LEVEL = LEVELS.length-1; // el jefe siempre es el último nivel
+// Nivel de cada oleada: jefe cada 5 oleadas; las demás recorren todos los niveles
+// normales en orden (antes la Estación Espacial coincidía siempre con el jefe y nunca salía).
+function survivalLevel(w){
+  if(w%5===0) return BOSS_LEVEL;
+  const normalWave=w-1-Math.floor((w-1)/5); // oleadas normales ya jugadas
+  return normalWave%BOSS_LEVEL;
+}
+
+const RAW_QUESTIONS = [
+  ['apple','manzana','pera','banana','uva'],
+  ['banana','plátano','manzana','naranja','limón'],
+  ['orange','naranja','manzana','pera','uva'],
+  ['pear','pera','manzana','banana','melón'],
+  ['grape','uva','pera','manzana','fresa'],
+  ['strawberry','fresa','uva','pera','mango'],
+  ['lemon','limón','naranja','lima','pera'],
+  ['bread','pan','queso','leche','arroz'],
+  ['cheese','queso','pan','mantequilla','huevo'],
+  ['milk','leche','agua','jugo','café'],
+  ['water','agua','leche','café','té'],
+  ['coffee','café','té','leche','jugo'],
+  ['tea','té','café','agua','leche'],
+  ['rice','arroz','pan','pasta','maíz'],
+  ['pasta','pasta','arroz','pan','sopa'],
+  ['soup','sopa','pasta','ensalada','arroz'],
+  ['salad','ensalada','sopa','pan','queso'],
+  ['meat','carne','pescado','pollo','huevo'],
+  ['fish','pescado','carne','pollo','arroz'],
+  ['chicken','pollo','pescado','carne','huevo'],
+  ['egg','huevo','queso','pollo','pan'],
+  ['butter','mantequilla','queso','aceite','pan'],
+  ['sugar','azúcar','sal','miel','pan'],
+  ['salt','sal','azúcar','pimienta','miel'],
+  ['honey','miel','azúcar','sal','jarabe'],
+  ['cake','pastel','pan','galleta','helado'],
+  ['cookie','galleta','pastel','pan','helado'],
+  ['ice cream','helado','pastel','galleta','yogur'],
+  ['pizza','pizza','pan','pastel','sopa'],
+  ['hamburger','hamburguesa','pizza','sopa','ensalada'],
+  ['sandwich','sándwich','hamburguesa','pizza','pan'],
+  ['chocolate','chocolate','café','caramelo','miel'],
+  ['fruit','fruta','verdura','carne','pan'],
+  ['vegetable','verdura','fruta','carne','queso'],
+  ['carrot','zanahoria','patata','tomate','cebolla'],
+  ['potato','patata','zanahoria','tomate','arroz'],
+  ['tomato','tomate','patata','zanahoria','manzana'],
+  ['onion','cebolla','tomate','patata','limón'],
+
+  ['dog','perro','gato','pájaro','pez'],
+  ['cat','gato','perro','conejo','ratón'],
+  ['bird','pájaro','perro','gato','pez'],
+  ['rabbit','conejo','gato','perro','ratón'],
+  ['mouse','ratón','conejo','gato','perro'],
+  ['horse','caballo','vaca','cerdo','perro'],
+  ['cow','vaca','caballo','cerdo','oveja'],
+  ['pig','cerdo','vaca','caballo','oveja'],
+  ['sheep','oveja','vaca','cerdo','caballo'],
+  ['duck','pato','ganso','pollo','pájaro'],
+  ['lion','león','tigre','oso','lobo'],
+  ['tiger','tigre','león','oso','lobo'],
+  ['bear','oso','león','tigre','lobo'],
+  ['wolf','lobo','oso','león','tigre'],
+  ['elephant','elefante','jirafa','mono','león'],
+  ['giraffe','jirafa','elefante','mono','caballo'],
+  ['monkey','mono','jirafa','elefante','león'],
+  ['snake','serpiente','lagarto','rana','pez'],
+  ['frog','rana','serpiente','lagarto','pato'],
+  ['turtle','tortuga','rana','serpiente','pez'],
+  ['whale','ballena','delfín','pez','tiburón'],
+  ['dolphin','delfín','ballena','tiburón','pez'],
+  ['shark','tiburón','ballena','delfín','pez'],
+  ['butterfly','mariposa','abeja','mosca','escarabajo'],
+  ['bee','abeja','mariposa','mosca','hormiga'],
+  ['ant','hormiga','abeja','mosca','escarabajo'],
+  ['spider','araña','insecto','escarabajo','hormiga'],
+
+  ['red','rojo','azul','verde','amarillo'],
+  ['blue','azul','rojo','verde','morado'],
+  ['yellow','amarillo','naranja','rojo','verde'],
+  ['green','verde','azul','amarillo','marrón'],
+  ['purple','morado','rojo','azul','rosa'],
+  ['pink','rosa','morado','rojo','blanco'],
+  ['black','negro','blanco','gris','marrón'],
+  ['white','blanco','negro','gris','rosa'],
+  ['gray','gris','negro','blanco','plata'],
+  ['brown','marrón','gris','negro','dorado'],
+  ['gold','dorado','plateado','amarillo','marrón'],
+  ['silver','plateado','dorado','gris','blanco'],
+
+  ['mother','madre','padre','hermana','tía'],
+  ['father','padre','madre','hermano','tío'],
+  ['sister','hermana','hermano','madre','tía'],
+  ['brother','hermano','hermana','padre','tío'],
+  ['aunt','tía','tío','madre','abuela'],
+  ['uncle','tío','tía','padre','abuelo'],
+  ['grandmother','abuela','abuelo','madre','tía'],
+  ['grandfather','abuelo','abuela','padre','tío'],
+  ['cousin','primo','tío','hermano','amigo'],
+  ['friend','amigo','primo','vecino','hermano'],
+  ['baby','bebé','niño','adulto','anciano'],
+  ['child','niño','bebé','adulto','joven'],
+  ['boy','niño','niña','hombre','mujer'],
+  ['girl','niña','niño','mujer','hombre'],
+  ['family','familia','amigo','vecino','equipo'],
+
+  ['book','libro','cuaderno','lápiz','mesa'],
+  ['pencil','lápiz','bolígrafo','libro','goma'],
+  ['pen','bolígrafo','lápiz','libro','regla'],
+  ['eraser','goma','lápiz','regla','cuaderno'],
+  ['ruler','regla','goma','lápiz','libro'],
+  ['notebook','cuaderno','libro','bolígrafo','mesa'],
+  ['desk','escritorio','mesa','silla','puerta'],
+  ['chair','silla','mesa','escritorio','cama'],
+  ['table','mesa','silla','cama','puerta'],
+  ['bed','cama','mesa','silla','sofá'],
+  ['sofa','sofá','cama','silla','mesa'],
+  ['door','puerta','ventana','pared','techo'],
+  ['window','ventana','puerta','pared','suelo'],
+  ['wall','pared','ventana','puerta','suelo'],
+  ['floor','suelo','pared','techo','ventana'],
+  ['lamp','lámpara','ventana','mesa','silla'],
+  ['clock','reloj','lámpara','espejo','puerta'],
+  ['mirror','espejo','reloj','lámpara','cuadro'],
+  ['key','llave','cerradura','puerta','cadena'],
+  ['bag','bolsa','mochila','caja','maleta'],
+  ['backpack','mochila','bolsa','maleta','caja'],
+  ['phone','teléfono','cámara','radio','computadora'],
+  ['computer','computadora','teléfono','cámara','televisión'],
+  ['television','televisión','computadora','radio','cámara'],
+  ['camera','cámara','teléfono','radio','televisión'],
+  ['radio','radio','cámara','teléfono','computadora'],
+  ['music','música','arte','historia','ciencia'],
+  ['art','arte','música','historia','matemáticas'],
+  ['history','historia','ciencia','arte','matemáticas'],
+  ['science','ciencia','historia','matemáticas','arte'],
+  ['math','matemáticas','ciencia','historia','inglés'],
+  ['english','inglés','español','francés','alemán'],
+
+  ['run','correr','caminar','saltar','nadar'],
+  ['walk','caminar','correr','saltar','volar'],
+  ['jump','saltar','correr','caminar','nadar'],
+  ['swim','nadar','correr','volar','saltar'],
+  ['fly','volar','nadar','correr','caminar'],
+  ['eat','comer','beber','dormir','correr'],
+  ['drink','beber','comer','dormir','nadar'],
+  ['sleep','dormir','despertar','comer','beber'],
+  ['wake up','despertar','dormir','comer','correr'],
+  ['read','leer','escribir','hablar','escuchar'],
+  ['write','escribir','leer','hablar','escuchar'],
+  ['speak','hablar','escuchar','leer','escribir'],
+  ['listen','escuchar','hablar','leer','escribir'],
+  ['see','ver','mirar','oír','tocar'],
+  ['look','mirar','ver','oír','oler'],
+  ['hear','oír','escuchar','ver','tocar'],
+  ['smell','oler','tocar','ver','oír'],
+  ['touch','tocar','oler','ver','oír'],
+  ['open','abrir','cerrar','empujar','tirar'],
+  ['close','cerrar','abrir','empujar','tirar'],
+  ['push','empujar','tirar','abrir','cerrar'],
+  ['pull','tirar','empujar','cerrar','abrir'],
+  ['give','dar','tomar','recibir','poner'],
+  ['take','tomar','dar','recibir','poner'],
+  ['put','poner','tomar','dar','quitar'],
+  ['go','ir','venir','salir','entrar'],
+  ['come','venir','ir','salir','entrar'],
+  ['enter','entrar','salir','ir','venir'],
+  ['leave','salir','entrar','ir','venir'],
+  ['play','jugar','trabajar','estudiar','dormir'],
+  ['work','trabajar','jugar','estudiar','descansar'],
+  ['study','estudiar','trabajar','jugar','leer'],
+  ['rest','descansar','trabajar','jugar','dormir'],
+  ['learn','aprender','enseñar','estudiar','olvidar'],
+  ['teach','enseñar','aprender','estudiar','olvidar'],
+  ['forget','olvidar','recordar','aprender','enseñar'],
+  ['remember','recordar','olvidar','aprender','enseñar'],
+  ['help','ayudar','dañar','pedir','dar'],
+  ['ask','preguntar','responder','pedir','dar'],
+  ['answer','responder','preguntar','pedir','dar'],
+  ['buy','comprar','vender','pagar','buscar'],
+  ['sell','vender','comprar','pagar','buscar'],
+  ['pay','pagar','comprar','vender','recibir'],
+  ['find','encontrar','buscar','perder','esconder'],
+  ['lose','perder','encontrar','buscar','ganar'],
+  ['hide','esconder','encontrar','buscar','perder'],
+  ['win','ganar','perder','encontrar','jugar'],
+  ['break','romper','arreglar','abrir','cerrar'],
+  ['fix','arreglar','romper','abrir','cerrar'],
+  ['clean','limpiar','ensuciar','barrer','lavar'],
+  ['wash','lavar','limpiar','secar','ensuciar'],
+  ['cook','cocinar','hornear','freír','comer'],
+  ['bake','hornear','cocinar','freír','comer'],
+  ['cut','cortar','pegar','romper','doblar'],
+  ['paste','pegar','cortar','doblar','romper'],
+  ['fold','doblar','cortar','pegar','romper'],
+
+  ['head','cabeza','mano','pie','ojo'],
+  ['eye','ojo','oreja','nariz','boca'],
+  ['ear','oreja','ojo','nariz','boca'],
+  ['nose','nariz','oreja','ojo','boca'],
+  ['mouth','boca','nariz','oreja','ojo'],
+  ['hand','mano','pie','brazo','pierna'],
+  ['foot','pie','mano','pierna','brazo'],
+  ['arm','brazo','pierna','mano','pie'],
+  ['leg','pierna','brazo','pie','mano'],
+  ['hair','cabello','piel','uña','diente'],
+  ['tooth','diente','cabello','uña','piel'],
+  ['heart','corazón','cerebro','pulmón','estómago'],
+  ['brain','cerebro','corazón','pulmón','estómago'],
+  ['stomach','estómago','corazón','cerebro','pulmón'],
+
+  ['shirt','camisa','pantalón','vestido','abrigo'],
+  ['pants','pantalón','camisa','falda','abrigo'],
+  ['dress','vestido','camisa','pantalón','falda'],
+  ['skirt','falda','vestido','pantalón','camisa'],
+  ['coat','abrigo','camisa','pantalón','sombrero'],
+  ['hat','sombrero','zapato','abrigo','camisa'],
+  ['shoe','zapato','sombrero','calcetín','camisa'],
+  ['sock','calcetín','zapato','sombrero','pantalón'],
+  ['jacket','chaqueta','abrigo','camisa','vestido'],
+  ['sweater','suéter','camisa','chaqueta','abrigo'],
+  ['uniform','uniforme','vestido','camisa','abrigo'],
+  ['glasses','gafas','sombrero','zapatos','guantes'],
+
+  ['house','casa','escuela','parque','tienda'],
+  ['school','escuela','casa','parque','biblioteca'],
+  ['park','parque','escuela','casa','playa'],
+  ['beach','playa','parque','montaña','río'],
+  ['mountain','montaña','playa','río','bosque'],
+  ['river','río','montaña','mar','lago'],
+  ['lake','lago','río','mar','montaña'],
+  ['sea','mar','río','lago','océano'],
+  ['ocean','océano','mar','río','lago'],
+  ['forest','bosque','montaña','parque','playa'],
+  ['tree','árbol','flor','planta','hoja'],
+  ['flower','flor','árbol','planta','hoja'],
+  ['plant','planta','árbol','flor','hoja'],
+  ['leaf','hoja','flor','árbol','planta'],
+  ['grass','hierba','hoja','flor','árbol'],
+  ['sun','sol','luna','estrella','nube'],
+  ['moon','luna','sol','estrella','nube'],
+  ['star','estrella','luna','sol','nube'],
+  ['cloud','nube','sol','luna','lluvia'],
+  ['rain','lluvia','nube','nieve','viento'],
+  ['snow','nieve','lluvia','viento','tormenta'],
+  ['wind','viento','lluvia','nieve','nube'],
+  ['sky','cielo','suelo','mar','monte'],
+  ['street','calle','carretera','parque','casa'],
+  ['road','carretera','calle','puente','río'],
+  ['bridge','puente','carretera','río','calle'],
+  ['city','ciudad','pueblo','campo','casa'],
+  ['town','pueblo','ciudad','campo','casa'],
+  ['farm','granja','ciudad','pueblo','campo'],
+  ['store','tienda','escuela','casa','parque'],
+  ['library','biblioteca','escuela','tienda','parque'],
+  ['hospital','hospital','escuela','tienda','biblioteca'],
+  ['restaurant','restaurante','tienda','hospital','escuela'],
+  ['airport','aeropuerto','estación','puerto','escuela'],
+  ['station','estación','aeropuerto','puerto','tienda'],
+
+  ['morning','mañana','tarde','noche','medianoche'],
+  ['afternoon','tarde','mañana','noche','medianoche'],
+  ['night','noche','mañana','tarde','día'],
+  ['day','día','noche','semana','mes'],
+  ['week','semana','día','mes','año'],
+  ['month','mes','semana','día','año'],
+  ['year','año','mes','semana','día'],
+  ['today','hoy','ayer','mañana','ahora'],
+  ['yesterday','ayer','hoy','mañana','siempre'],
+  ['tomorrow','mañana','hoy','ayer','nunca'],
+  ['now','ahora','luego','ayer','siempre'],
+  ['early','temprano','tarde','siempre','nunca'],
+  ['late','tarde','temprano','nunca','siempre'],
+  ['always','siempre','nunca','a veces','luego'],
+  ['never','nunca','siempre','a veces','temprano'],
+  ['sometimes','a veces','siempre','nunca','ahora'],
+  ['hot','caliente','frío','templado','fresco'],
+  ['cold','frío','caliente','templado','tierno'],
+  ['warm','templado','caliente','frío','fresco'],
+  ['sunny','soleado','lluvioso','nublado','ventoso'],
+  ['rainy','lluvioso','soleado','nublado','nevado'],
+  ['cloudy','nublado','soleado','lluvioso','ventoso'],
+  ['windy','ventoso','nublado','soleado','lluvioso'],
+  ['big','grande','pequeño','alto','bajo'],
+  ['small','pequeño','grande','alto','bajo'],
+  ['tall','alto','bajo','grande','pequeño'],
+  ['short','bajo','alto','pequeño','grande'],
+  ['long','largo','corto','ancho','alto'],
+  ['fast','rápido','lento','alto','fuerte'],
+  ['slow','lento','rápido','fuerte','débil'],
+  ['strong','fuerte','débil','rápido','lento'],
+  ['weak','débil','fuerte','lento','rápido'],
+  ['happy','feliz','triste','cansado','enojado'],
+  ['sad','triste','feliz','cansado','enojado'],
+  ['tired','cansado','feliz','triste','enojado'],
+  ['angry','enojado','triste','feliz','cansado'],
+  ['hungry','hambriento','sediento','cansado','feliz'],
+  ['thirsty','sediento','hambriento','cansado','triste'],
+  ['new','nuevo','viejo','joven','antiguo'],
+  ['old','viejo','nuevo','joven','reciente'],
+  ['young','joven','viejo','nuevo','adulto'],
+  ['beautiful','hermoso','feo','grande','pequeño'],
+  ['ugly','feo','hermoso','alto','bajo'],
+  ['dirty','sucio','limpio','nuevo','viejo'],
+  ['easy','fácil','difícil','rápido','lento'],
+  ['difficult','difícil','fácil','largo','corto'],
+  ['cheap','barato','caro','nuevo','viejo'],
+  ['expensive','caro','barato','viejo','nuevo'],
+  ['heavy','pesado','ligero','grande','pequeño'],
+  ['dark','oscuro','claro','negro','blanco'],
+  ['bright','brillante','oscuro','claro','tenue'],
+  ['quiet','silencioso','ruidoso','rápido','lento'],
+  ['noisy','ruidoso','silencioso','alto','bajo'],
+  ['full','lleno','vacío','completo','abierto'],
+  ['empty','vacío','lleno','cerrado','abierto'],
+  ['closed','cerrado','abierto','lleno','vacío'],
+  ['ready','listo','tarde','temprano','lento'],
+  ['here','aquí','allí','lejos','casa'],
+  ['there','allí','aquí','lejos','cerca'],
+  ['near','cerca','lejos','aquí','allí'],
+  ['far','lejos','cerca','allí','aquí'],
+  ['up','arriba','abajo','izquierda','derecha'],
+  ['down','abajo','arriba','derecha','izquierda'],
+  ['left','izquierda','derecha','arriba','abajo'],
+  ['right','derecha','izquierda','abajo','arriba'],
+  ['inside','dentro','fuera','cerca','lejos'],
+  ['outside','fuera','dentro','lejos','cerca'],
+  ['front','delante','detrás','arriba','abajo'],
+  ['back','detrás','delante','abajo','arriba']
+];
+function shuffleArr(a){
+  const b=[...a];
+  for(let i=b.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [b[i],b[j]]=[b[j],b[i]]; }
+  return b;
+}
+
+// Frases útiles (dificultad 2). Las respuestas son cortas para que quepan en las zonas.
+const RAW_PHRASES = [
+  ['Thank you','Gracias','Por favor','De nada','Perdón'],
+  ['Good morning','Buenos días','Buenas noches','Buenas tardes','Adiós'],
+  ['Good night','Buenas noches','Buenos días','Buen viaje','Hola'],
+  ['Good afternoon','Buenas tardes','Buenos días','Buenas noches','Hasta luego'],
+  ['See you later','Hasta luego','Bienvenido','Ven aquí','Buen día'],
+  ['See you tomorrow','Hasta mañana','Hasta luego','Buenas noches','Buen día'],
+  ['Excuse me','Disculpe','Gracias','Cuidado','Adiós'],
+  ['I am sorry','Lo siento','Estoy bien','Tengo frío','Me voy'],
+  ['How are you?','¿Cómo estás?','¿Quién eres?','¿Dónde estás?','¿Qué hora es?'],
+  ['Nice to meet you','Mucho gusto','Muchas gracias','Buen provecho','Hasta pronto'],
+  ['Good luck','Buena suerte','Buen viaje','Mucho gusto','Feliz día'],
+  ['Have a nice trip','Buen viaje','Buena suerte','Buen día','Hasta luego'],
+  ['I am hungry','Tengo hambre','Tengo sed','Tengo sueño','Tengo frío'],
+  ['I am thirsty','Tengo sed','Tengo hambre','Tengo calor','Tengo miedo'],
+  ['I am cold','Tengo frío','Tengo calor','Tengo sed','Tengo prisa'],
+  ['I am hot','Tengo calor','Tengo frío','Tengo sueño','Tengo hambre'],
+  ['I am tired','Estoy cansado','Estoy feliz','Estoy triste','Estoy listo'],
+  ['I am scared','Tengo miedo','Tengo sueño','Tengo prisa','Tengo frío'],
+  ['Be careful','Ten cuidado','Ven aquí','Date prisa','Siéntate'],
+  ['Come here','Ven aquí','Vete ya','Siéntate','Mira allí'],
+  ['Hurry up','Date prisa','Ten cuidado','Más despacio','Ven aquí'],
+  ['Sit down','Siéntate','Levántate','Ven aquí','Cállate'],
+  ['Stand up','Levántate','Siéntate','Date prisa','Mira'],
+  ["Let's go",'Vamos','Ven','Espera','Para'],
+  ['Wait for me','Espérame','Llámame','Ayúdame','Mírame'],
+  ['Help me','Ayúdame','Espérame','Llámame','Sígueme'],
+  ['Follow me','Sígueme','Ayúdame','Escúchame','Espérame'],
+  ['Listen to me','Escúchame','Mírame','Sígueme','Ayúdame'],
+  ["I don't know",'No lo sé','No me gusta','No puedo','No quiero'],
+  ['I like it','Me gusta','No me gusta','Lo quiero','Lo tengo'],
+  ['What time is it?','¿Qué hora es?','¿Qué día es?','¿Cómo estás?','¿Dónde es?'],
+  ['Where is it?','¿Dónde está?','¿Qué es?','¿Cuándo es?','¿Quién es?'],
+  ['Who is it?','¿Quién es?','¿Qué es?','¿Dónde está?','¿Cuál es?'],
+  ['How much is it?','¿Cuánto cuesta?','¿Cuántos hay?','¿Qué es?','¿Dónde está?'],
+  ['Of course','Claro','Nunca','Jamás','Tampoco'],
+  ['Well done','Bien hecho','Muy mal','Buen día','Mucho gusto']
+];
+// Gramática: completar la frase. [frase, correcta, distr1, distr2, distr3, dificultad]
+const RAW_GRAMMAR = [
+  ['I ___ a student.','am','is','are','be',2],
+  ['She ___ a teacher.','is','are','am','be',2],
+  ['They ___ my friends.','are','is','am','be',2],
+  ['He ___ tall.','is','are','am','be',2],
+  ['You ___ very kind.','are','is','am','be',2],
+  ['It ___ cold today.','is','are','am','be',2],
+  ['There ___ a dog in the garden.','is','are','am','be',2],
+  ['There ___ three apples.','are','is','am','be',2],
+  ['I ___ two brothers.','have','has','having','am',3],
+  ['She ___ a cat.','has','have','is','are',3],
+  ['They ___ a big house.','have','has','is','am',3],
+  ['He ___ football every day.','plays','play','playing','to play',3],
+  ['I ___ coffee every morning.','drink','drinks','drinking','to drink',3],
+  ['She ___ to school by bus.','goes','go','going','to go',3],
+  ['Yesterday I ___ a movie.','watched','watch','watches','watching',3],
+  ['Last year we ___ to Spain.','went','go','goes','going',3],
+  ['Tomorrow I ___ visit my grandma.','will','was','did','am',3],
+  ['___ you like pizza?','Do','Does','Is','Are',3],
+  ['___ she speak English?','Does','Do','Is','Are',3],
+  ['I ___ like spiders.',"don't","doesn't","isn't","aren't",3],
+  ['He ___ like vegetables.',"doesn't","don't","isn't","aren't",3],
+  ['The book is ___ the table.','on','of','to','for',3],
+  ['I was born ___ 2010.','in','on','at','to',3],
+  ['See you ___ Monday.','on','in','at','to',3],
+  ["The class starts ___ 8 o'clock.",'at','in','on','to',3],
+  ['This is ___ apple.','an','a','two','many',2],
+  ['She is ___ engineer.','an','a','two','some',3],
+  ['I have ___ dog.','a','an','two','many',2],
+  ['My brother is ___ than me.','taller','tall','tallest','more tall',3],
+  ['This is the ___ day of my life.','best','good','better','well',3],
+  ['Look! The baby ___ sleeping.','is','are','am','be',3],
+  ['They are ___ TV now.','watching','watch','watches','watched',3],
+  ['I can ___ English.','speak','speaks','speaking','spoke',3],
+  ['She can ___ very fast.','run','runs','running','ran',3],
+  ['This is ___ book. (de ella)','her','his','their','our',3],
+  ['That is ___ car. (de él)','his','her','our','their',3],
+  ['We love ___ school. (nuestra)','our','their','his','her',3],
+  ['How ___ are you? I am ten.','old','many','much','long',3],
+  ['How ___ apples do you want?','many','much','old','long',3],
+  ['Where ___ you live?','do','does','are','is',3],
+  ['What ___ he doing?','is','are','do','does',3]
+];
+
+// Cada pregunta lleva categoría (cat) y dificultad (d: 1 fácil, 2 media, 3 difícil).
+// Vocabulario: la dificultad se estima por la longitud de la palabra inglesa.
+function makeQuestion(text,row,cat,d){
+  const opts=shuffleArr([row[1],row[2],row[3],row[4]]);
+  return {q:text, o:opts, c:opts.indexOf(row[1]), cat, d};
+}
+const QUESTIONS = [
+  ...RAW_QUESTIONS.map(r=>makeQuestion(`¿Qué significa '${r[0]}'?`, r, 'vocab', r[0].length<=4?1:(r[0].length<=6?2:3))),
+  ...RAW_PHRASES.map(r=>makeQuestion(`¿Qué significa '${r[0]}'?`, r, 'frase', 2)),
+  ...RAW_GRAMMAR.map(r=>makeQuestion(`Completa: ${r[0]}`, r, 'gramatica', r[5]))
+];
+const CAT_ICONS={vocab:'book', frase:'bubble', gramatica:'pencil'};
+// Rango de dificultad según el nivel (o la oleada en Supervivencia)
+function questionRange(){
+  if(survivalMode) return wave<=2?[1,1]:(wave<=5?[1,2]:(wave<=9?[2,3]:[3,3]));
+  return [[1,1],[1,2],[1,2],[2,3],[2,3],[2,3],[2,3]][Math.min(levelIndex,6)];
+}
+
+const CHARS = [
+ {id:'stitch', name:'Stitch (626)', color:'#00d4ff', speed:1.0, hitbox:1.0, desc:'Equilibrado', draw:drawStitch},
+ {id:'angel', name:'Angel (624)', color:'#ff5fa2', speed:1.15, hitbox:1.0, desc:'+15% velocidad', draw:drawAngel},
+ {id:'lilo', name:'Lilo', color:'#ff6b6b', speed:0.92, hitbox:0.85, desc:'Hitbox −15 % · Vudú', draw:drawLilo},
+];
+const SKINS = [
+ {id:'classic',  name:'Clásico',  desc:'Azul original',        speed:1.00, hitbox:1.00},
+ {id:'elvis',    name:'Elvis',    desc:'Traje blanco y dorado', speed:0.95, hitbox:1.05},
+ {id:'hula',     name:'Hula',     desc:'Faldita de hojas',      speed:1.05, hitbox:0.95},
+ {id:'surfer',   name:'Surfer',   desc:'Tabla de surf',         speed:1.10, hitbox:1.00},
+ {id:'genio',    name:'Genio',    desc:'Mente brillante',       speed:0.90, hitbox:1.00},
+ {id:'serio',    name:'En Serio', desc:'Concentrado',           speed:1.00, hitbox:1.00},
+ {id:'espanto',  name:'Espanto',  desc:'Susto',                 speed:1.05, hitbox:0.90},
+ {id:'jajaja',   name:'Jajaja',   desc:'Risa contagiosa',       speed:1.05, hitbox:1.00},
+ {id:'molesto',  name:'Molesto',  desc:'Gruñido',               speed:1.00, hitbox:1.05},
+ {id:'uir',      name:'¡Huir!',   desc:'Sale corriendo',        speed:1.00, hitbox:1.00},
+ {id:'ups',      name:'¡Ups!',    desc:'Reflejos',              speed:0.95, hitbox:0.90}
+];
+// Fichas de diseño: habilidad, fortalezas y debilidades (ver DISEÑO_PERSONAJES.md)
+const CHAR_PROFILES = {
+  stitch:{role:'Todo-terreno / Cazador equilibrado',ability:'Según su estilo',abilityDesc:'Su habilidad depende del estilo que elijas abajo (Clásico: power-ups +30 %).',strengths:['Versátil y balanceado','Fuerte (4 brazos)','Resistente'],weaknesses:['Impulsivo con la comida','No sabe nadar bien']},
+  angel:{role:'Veloz / Hipnótica',ability:'Canto de sirena',abilityDesc:'+15 % de velocidad. Si un enemigo llega a 3 casillas, lo aturde 1,5 s (enfriamiento 12 s).',strengths:['Muy rápida','Aturde sola, sin botón','Pareja de Stitch'],weaknesses:['Frágil: invulnerabilidad tras golpe 1,2 s (en vez de 2 s)','El canto tiene enfriamiento']},
+  lilo:{role:'Inteligente / Sigilosa',ability:'Vudú',abilityDesc:'Hitbox −15 % y abre una puerta X por nivel sin llave.',strengths:['Difícil de atrapar','No necesita la llave para una puerta'],weaknesses:['Lenta: velocidad −8 %']},
+  gantu:{role:'Tanque / Perseguidor',ability:'Persecución implacable',abilityDesc:'Corre tras el jugador cuando lo detecta a 9 casillas.',strengths:['Fuerza bruta','Tenaz','Resiste golpes'],weaknesses:['Lento girando','Predecible en pasillos']},
+  jumba:{role:'Científico / Estratega',ability:'Conocimiento del experimento',abilityDesc:'Sabe cuál es la zona correcta y va hacia ella.',strengths:['Inteligente','Calculador','Usa tecnología'],weaknesses:['Lento y despistado','Su equipo a veces falla']},
+  pleakley:{role:'Disfraz / Caos',ability:'Camuflaje',abilityDesc:'Se mueve al azar y se disfraza; impredecible.',strengths:['Nadie sabe dónde aparece','Sigiloso'],weaknesses:['Cobarde','Mal atleta']},
+  reuben:{role:'Vago / Oportunista',ability:'Hambre de sándwiches',abilityDesc:'Persigue solo ~55 % del tiempo; se distrae con comida.',strengths:['Muy rápido cuando quiere','Sigue órdenes'],weaknesses:['Perezoso','Glotón y distraído']},
+  boss:{role:'Jefe multiphase',ability:'Aura de tres fases',abilityDesc:'F1 morado → F2 rojo → F3 dorado; cada fase es más rápida y agresiva.',strengths:['3 fases','Muy rápido en F3','IA agresiva'],weaknesses:['Patrón predecible','Vulnerable al cambiar de aura']}
+};
+const SKIN_PROFILES = {
+  classic:{role:'Equilibrado',ability:'Instinto 626',abilityDesc:'Café y ukelele duran +30 %.',strengths:['Saca más de los power-ups','Sin puntos débiles en stats'],weaknesses:['Sin habilidad defensiva','Depende de encontrar power-ups']},
+  elvis:{role:'Resistente / Carismático',ability:'Rock Star',abilityDesc:'El traje absorbe el primer golpe de enemigo de cada nivel.',strengths:['Un golpe gratis por nivel','Imponente'],weaknesses:['Velocidad −5 %','Hitbox +5 %']},
+  hula:{role:'Ágil / Fresco',ability:'Danza Hula',abilityDesc:'30 % de esquivar un golpe en Playa y Luau.',strengths:['Velocidad +5 %','Hitbox −5 %'],weaknesses:['Sin esquiva fuera de Playa/Luau']},
+  surfer:{role:'Veloz',ability:'Ola',abilityDesc:'Velocidad +15 % extra en Playa y Luau.',strengths:['Velocidad base +10 %','Rapidísimo en la playa'],weaknesses:['−10 % de velocidad en interiores (Casa, Nave, Estación)']},
+  genio:{role:'Estratega',ability:'Mente brillante',abilityDesc:'+10 s al empezar cada nivel y +3 s extra por acierto.',strengths:['Mucho más tiempo','Ideal para pensar las respuestas'],weaknesses:['Velocidad −10 %']},
+  serio:{role:'Concentrado',ability:'Enfoque',abilityDesc:'El primer fallo de cada nivel no quita vida.',strengths:['Perdona un error por nivel','Stats normales'],weaknesses:['Rígido: el café solo dura la mitad']},
+  espanto:{role:'Evasivo',ability:'Susto',abilityDesc:'Si un enemigo llega a 2 casillas, los cercanos huyen 2 s (enfriamiento 15 s).',strengths:['Ahuyenta automáticamente','Hitbox −10 %'],weaknesses:['Nervioso: invulnerabilidad tras golpe 1,2 s (en vez de 2 s)']},
+  jajaja:{role:'Alegre / Apoyo',ability:'Risa contagiosa',abilityDesc:'Al acertar, velocidad ×1,3 durante 3 s.',strengths:['Velocidad +5 %','Racha veloz al acertar'],weaknesses:['No se lo toma en serio: −10 % de puntos por acierto']},
+  molesto:{role:'Agresivo',ability:'Gruñido',abilityDesc:'Los enemigos a 3 casillas o menos suelen alejarse (70 %). No afecta al jefe.',strengths:['Intimida a los enemigos','Mantiene la zona despejada'],weaknesses:['Se enoja: fallar resta 3 s extra','Hitbox +5 %']},
+  uir:{role:'Escapista',ability:'Huida',abilityDesc:'Si un enemigo llega a 2 casillas, sprint ×1,5 durante 1,5 s (enfriamiento 10 s).',strengths:['Escapa de apuros','Se activa sola'],weaknesses:['Pánico: no se puede activar a voluntad','Enfriamiento largo']},
+  ups:{role:'Reflejos',ability:'Tropezón',abilityDesc:'20 % de esquivar cualquier golpe de enemigo.',strengths:['Esquiva en todos los niveles','Hitbox −10 %'],weaknesses:['Al esquivar se queda quieto 0,4 s','Velocidad −5 %']}
+};
+
+// ===================== PIXEL ART (16x16, dibujado en código) =====================
+const PIXEL_MODE = false; // true = sprites pixel-art; false = imágenes de ASSET_MAP
+const PAL = {
+ B:'#00d4ff', b:'#0088cc', C:'#9ff0ff', K:'#1a1a2e', W:'#ffffff',
+ P:'#ff5fa2', p:'#cc2f78', S:'#ffd4a3', R:'#ff6b6b', r:'#b02020',
+ h:'#1a1a2e', G:'#6be36b', g:'#3aa23a', Y:'#ffe066', O:'#ff9a3c',
+ N:'#8b5a2b', A:'#9aa7b5', a:'#5a6f86', M:'#b388ff', E:'#4a2a6a'
+};
+function makeSprite(fn){
+  const c=document.createElement('canvas'); c.width=16; c.height=16;
+  const g=c.getContext('2d');
+  const px=(x,y,col)=>{ g.fillStyle=PAL[col]||col; g.fillRect(x,y,1,1); };
+  const rect=(x,y,w,h,col)=>{ g.fillStyle=PAL[col]||col; g.fillRect(x,y,w,h); };
+  fn(px,rect); return c;
+}
+const PIXELS = {
+ stitch: makeSprite((px,r)=>{
+   r(2,1,3,6,'B'); r(11,1,3,6,'B'); r(3,2,2,4,'p'); r(12,2,2,4,'p');
+   r(4,4,8,7,'B'); r(5,10,6,4,'B'); r(6,11,4,2,'C');
+   r(6,7,2,2,'W'); r(9,7,2,2,'W'); px(7,8,'K'); px(10,8,'K');
+   r(7,9,2,1,'K'); px(7,10,'K'); px(8,10,'K');
+ }),
+ angel: makeSprite((px,r)=>{
+   r(4,1,1,3,'P'); r(11,1,1,3,'P'); px(4,0,'Y'); px(11,0,'Y');
+   r(4,4,8,7,'P'); r(5,10,6,4,'P'); r(6,11,4,2,'p');
+   r(6,7,2,2,'W'); r(9,7,2,2,'W'); px(7,8,'K'); px(10,8,'K');
+   r(6,6,2,1,'K'); r(9,6,2,1,'K');
+   r(7,9,2,1,'K'); px(7,10,'K'); px(8,10,'K');
+ }),
+ lilo: makeSprite((px,r)=>{
+   r(5,1,6,4,'h'); r(4,3,8,4,'S'); r(5,5,6,3,'S');
+   px(6,5,'K'); px(9,5,'K'); r(7,7,2,1,'r');
+   r(4,9,8,5,'R'); r(5,10,2,1,'W'); r(9,10,2,1,'W'); r(7,12,2,1,'W');
+   r(3,9,2,5,'R'); r(11,9,2,5,'R');
+ }),
+ gantu: makeSprite((px,r)=>{
+   r(3,0,2,3,'a'); r(11,0,2,3,'a');
+   r(2,3,12,8,'A'); r(3,4,10,6,'a');
+   r(5,5,2,2,'W'); r(9,5,2,2,'W'); px(6,6,'K'); px(10,6,'K');
+   r(6,8,4,1,'K'); r(4,11,8,3,'A');
+ }),
+ jumba: makeSprite((px,r)=>{
+   r(3,3,10,8,'O'); r(4,10,8,4,'O');
+   r(4,5,3,3,'W'); r(9,5,3,3,'W');
+   px(5,6,'K'); px(6,6,'K'); px(10,6,'K'); px(11,6,'K');
+   r(2,5,1,1,'K'); r(13,5,1,1,'K'); r(2,6,11,1,'K');
+   r(6,9,4,1,'K');
+ }),
+ pleakley: makeSprite((px,r)=>{
+   r(7,0,1,3,'g'); px(7,0,'R');
+   r(3,3,10,8,'G'); r(4,10,8,4,'G');
+   r(5,5,6,5,'W'); r(7,6,3,3,'K'); px(8,6,'W');
+ }),
+ reuben: makeSprite((px,r)=>{
+   r(2,1,3,6,'Y'); r(11,1,3,6,'Y'); r(3,2,2,4,'O'); r(12,2,2,4,'O');
+   r(4,4,8,7,'Y'); r(5,10,6,4,'Y'); r(6,11,4,2,'O');
+   r(6,7,2,2,'W'); r(9,7,2,2,'W'); px(7,8,'K'); px(10,8,'K');
+   r(7,9,3,1,'K');
+ }),
+ coffee: makeSprite((px,r)=>{
+   r(4,5,8,7,'N'); r(5,4,6,1,'W'); r(5,6,6,4,'W');
+   r(3,6,1,4,'K'); r(12,6,2,3,'K');
+   r(6,2,1,2,'W'); r(9,1,1,3,'W');
+ }),
+ ukelele: makeSprite((px,r)=>{
+   r(6,8,4,5,'N'); r(5,9,6,3,'N'); r(6,10,4,1,'W');
+   r(7,2,2,6,'r'); r(7,1,2,1,'Y'); r(7,0,2,1,'Y');
+   r(6,7,4,1,'Y');
+ }),
+ boss: makeSprite((px,r)=>{
+   r(2,0,3,4,'E'); r(11,0,3,4,'E');
+   r(3,1,2,3,'M'); r(11,1,2,3,'M');
+   r(2,4,12,8,'E'); r(3,5,10,6,'M');
+   r(4,6,3,2,'R'); r(9,6,3,2,'R');
+   px(5,7,'K'); px(10,7,'K');
+   r(5,9,6,2,'K');
+   r(6,11,1,2,'W'); r(9,11,1,2,'W');
+   r(4,12,8,3,'E');
+ })
+};
+function drawPixel(ctx,name,x,y,size){
+  const s=PIXELS[name]; if(!s) return false;
+  ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(s, Math.round(x-size/2), Math.round(y-size/2), size, size);
+  return true;
+}
+
+// ===================== ASSET MAP (ajusta nombres si hace falta) =====================
+// Las imágenes base aún no existen: con null no se pide nada al servidor (sin 404)
+// y se usa el dibujo procedural. Cuando haya arte, pon aquí su ruta. Ruta sugerida
+// en el comentario de cada línea (cada imagen vive en la carpeta de su ficha).
+const ASSET_MAP = {
+  stitch: null,   // personajes/buenos/stitch/clasico.png
+  angel: null,    // personajes/buenos/angel/angel.png
+  lilo: null,     // personajes/buenos/lilo/lilo.png
+  gantu: null,    // personajes/enemigos/Gantu/gantu.png
+  jumba: null,    // personajes/enemigos/Jumba/jumba.png
+  pleakley: null, // personajes/enemigos/Pleakley/pleakley.png
+  reuben: null,   // personajes/enemigos/Reuben/reuben.png
+  coffee: null,   // power-ups/cafe/cafe.png
+  ukelele: null,  // power-ups/ukelele/ukelele.png
+  boss: null,     // personajes/enemigos/jefes/gran_consejo.png
+  // Skins reales de Stitch (personajes/buenos/stitch/)
+  stitch_elvis:   'personajes/buenos/stitch/elvis.png',
+  stitch_hula:    'personajes/buenos/stitch/falda_ulaula.png',
+  stitch_surfer:  'personajes/buenos/stitch/surfer.png',
+  stitch_genio:   'personajes/buenos/stitch/genio.png',
+  stitch_serio:   'personajes/buenos/stitch/en_serio.png',
+  stitch_espanto: 'personajes/buenos/stitch/espanto.png',
+  stitch_jajaja:  'personajes/buenos/stitch/jajaja.png',
+  stitch_molesto: 'personajes/buenos/stitch/molesto.png',
+  stitch_uir:     'personajes/buenos/stitch/uir.png',
+  stitch_ups:     'personajes/buenos/stitch/ups.png',
+  background: 'personajes/buenos/stitch/summer_lilostitch_elvis_89aee099.jpeg'
+};
+const ASSETS = {};
+function loadAssets(){
+  Object.keys(ASSET_MAP).forEach(k=>{
+    ASSETS[k]=null;
+    if(!ASSET_MAP[k]) return; // sin arte todavía → respaldo procedural
+    const img=new Image();
+    img.onload=()=>{ ASSETS[k]=img; };
+    img.onerror=()=>{ ASSETS[k]=null; };
+    img.src=ASSET_MAP[k];
+  });
+}
+function drawAsset(ctx,img,x,y,size){
+  if(!img) return null;
+  const ar=img.width/img.height;
+  let w=size, h=size;
+  if(ar>1) h=size/ar; else w=size*ar;
+  ctx.drawImage(img, x-w/2, y-h/2, w, h);
+  return {x:x-w/2, y:y-h/2, w, h};
+}
+function drawSkinOverlay(ctx,r,skin){
+  if(!r||skin===0) return;
+  const {x,y,w,h}=r;
+  ctx.save();
+  if(skin===1){
+    ctx.fillStyle='#f5f0e6';
+    ctx.beginPath();
+    ctx.moveTo(x+w*.30,y+h*.30); ctx.lineTo(x+w*.70,y+h*.30);
+    ctx.lineTo(x+w*.78,y+h*.72); ctx.lineTo(x+w*.22,y+h*.72);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle='#ffd166'; ctx.lineWidth=Math.max(1,w*.025);
+    ctx.beginPath(); ctx.moveTo(x+w*.32,y+h*.33); ctx.lineTo(x+w*.68,y+h*.33); ctx.stroke();
+    for(let i=-1;i<=1;i++){
+      ctx.beginPath(); ctx.moveTo(x+w*(.5+i*.11),y+h*.35);
+      ctx.lineTo(x+w*(.5+i*.14),y+h*.70); ctx.stroke();
+    }
+    ctx.fillStyle='#1a1a2e'; ctx.fillRect(x+w*.22,y+h*.52,w*.56,h*.055);
+    ctx.fillStyle='#ffd166'; ctx.fillRect(x+w*.45,y+h*.505,w*.10,h*.09);
+  } else if(skin===2){
+    ctx.strokeStyle='#2e7d32'; ctx.lineWidth=Math.max(1,w*.025);
+    ctx.beginPath(); ctx.moveTo(x+w*.20,y+h*.52); ctx.lineTo(x+w*.80,y+h*.52); ctx.stroke();
+    for(let i=0;i<7;i++){
+      ctx.fillStyle=i%2?'#3aa23a':'#6be36b';
+      ctx.beginPath(); ctx.ellipse(x+w*(.22+i*.093),y+h*.61,w*.085,h*.15,(i-3)*.12,0,Math.PI*2); ctx.fill();
+    }
+    for(let i=0;i<6;i++){
+      ctx.fillStyle=i%2?'#ff5fa2':'#ffd166';
+      ctx.beginPath(); ctx.arc(x+w*(.30+i*.08),y+h*.33,w*.042,0,Math.PI*2); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+function drawCharArt(ctx,id,x,y,size){
+  if(id==='stitch' && selectedSkin>0 && !PIXEL_MODE){
+    const skinImg=ASSETS['stitch_'+SKINS[selectedSkin].id];
+    if(skinImg) return !!drawAsset(ctx,skinImg,x,y,size);
+  }
+  let r=null;
+  if(PIXEL_MODE){
+    drawPixel(ctx,id,x,y,size);
+    r={x:x-size/2,y:y-size/2,w:size,h:size};
+  } else {
+    r=drawAsset(ctx,ASSETS[id],x,y,size);
+  }
+  if(id==='stitch') drawSkinOverlay(ctx,r,selectedSkin);
+  return !!r;
+}
+// Dibuja el jugador con animación: rebote al caminar, squash/stretch y emotes
+function drawPlayerAnimated(ctx,x,y,size){
+  const moving=(player.dir.x!==0||player.dir.y!==0) && !player.warp;
+  let bob=0, sx=1, sy=1, rot=0;
+  if(moving){
+    // Carrera: zancada rápida (rebote doble por ciclo), squash y balanceo lateral,
+    // inclinación hacia donde corre y paso más rápido si va acelerado
+    const pace=14*(speedBoost>0?1.4:1)*(ab.fleeT>0||ab.laughT>0?1.3:1);
+    const w=Math.sin(animTime*pace);
+    bob=-Math.abs(w)*size*.09;
+    sx=1+Math.abs(w)*.06; sy=1-Math.abs(w)*.06;
+    rot=w*.10 + player.dir.x*.12;
+  } else {
+    bob=Math.sin(animTime*3)*size*.018;
+  }
+  if(playerAnim.timer>0){
+    const p=playerAnim.timer/playerAnim.dur;
+    if(playerAnim.type==='hurt'){ x+=Math.sin(animTime*45)*size*.09; }
+    if(playerAnim.type==='happy'){ const b=Math.abs(Math.sin(p*Math.PI*4)); sy=1+b*.16; sx=1-b*.09; }
+    if(playerAnim.type==='wow'){ sx=1+Math.abs(Math.sin(p*Math.PI*3))*.10; }
+    if(playerAnim.type==='sing'){ const b=Math.sin(p*Math.PI*6); sy=1+b*.07; sx=1-b*.05; }
+    if(playerAnim.type==='mad'){ x+=Math.sin(animTime*30)*size*.04; }
+    if(playerAnim.type==='flee'||playerAnim.type==='scare'){ sx=1.08; sy=.94; }
+  }
+  // Portal: se encoge girando y luego reaparece
+  const ws=warpScale();
+  if(player.warp){ sx*=ws; sy*=ws; rot+=(1-ws)*Math.PI*2; }
+  ctx.save();
+  ctx.translate(x,y+bob);
+  ctx.rotate(rot);
+  ctx.scale(sx*(player.facing<0?-1:1),sy);
+  if(player.warp) ctx.globalAlpha=Math.max(0,ws);
+  let drawn=false;
+  if(playerAnim.timer>0 && player.char.id==='stitch' && EMOTES[playerAnim.type]){
+    const img=ASSETS[EMOTES[playerAnim.type]];
+    if(img) drawn=!!drawAsset(ctx,img,0,0,size*1.08);
+  }
+  if(!drawn){
+    if(!drawCharArt(ctx,player.char.id,0,0,size)) player.char.draw(ctx,0,0,size*.45);
+  }
+  ctx.restore();
+  if(playerAnim.timer>0 && !drawn && EMOTE_ICONS[playerAnim.type]) drawEmoteBubble(ctx,x,y-size*.85,size,playerAnim.timer/playerAnim.dur);
+}
+function drawEmoteBubble(ctx,x,y,size,p){
+  const r=Math.max(9,size*.32);
+  const pop=Math.min(1,(1-p)*6); // aparece con un pequeño "pop"
+  ctx.save();
+  ctx.translate(x,y); ctx.scale(pop,pop);
+  ctx.fillStyle='rgba(255,255,255,.92)'; ctx.strokeStyle='#12203a'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-r*.25,r*.85); ctx.lineTo(0,r*1.35); ctx.lineTo(r*.25,r*.85); ctx.fill();
+  drawPxIcon(ctx,EMOTE_ICONS[playerAnim.type],0,0,r*1.25);
+  ctx.restore();
+}
+
+// ===================== STATE =====================
+let canvas, ctx;
+let cols=0, rows=0, ts=32, offX=0, offY=0, dpr=1;
+let maze=[]; let zones=[]; let items=[]; let portals=[], keys=[], doors=[]; let hasKey=false; let player, enemies=[];
+let score=0, lives=5, timer=90, levelIndex=0;
+let questionDeck=[], usedQuestions=new Set();
+let currentQuestion=null, qIndex=0, levelQuestions=[];
+let invuln=0, stun=0, speedBoost=0;
+// Animaciones: las imágenes de expresión se usan como frames de emote
+const EMOTES={happy:'stitch_jajaja',hurt:'stitch_espanto',mad:'stitch_molesto',wow:'stitch_ups',cool:'stitch_genio',
+  flee:'stitch_uir',scare:'stitch_espanto',shield:'stitch_elvis'};
+// Emotes sin imagen (Angel, Lilo o Stitch sin arte): burbuja con emoji sobre la cabeza
+const EMOTE_ICONS={happy:'happy',hurt:'hurt',mad:'mad',wow:'wow',cool:'cool',sing:'note',flee:'dash',scare:'scream',shield:'shield'};
+let animTime=0, playerAnim={type:'idle',timer:0,dur:1};
+function playAnim(type,dur=.7){ playerAnim.type=type; playerAnim.timer=dur; playerAnim.dur=dur; }
+let gameOver=false, levelComplete=false, paused=false;
+let survivalMode=false, wave=1, difficulty=1;
+let audioCtx=null, masterGain=null, musicGain=null, muted=false;
+let timerMax=90, lastTickSec=-1, banner=null, dustT=0, levelHits=0, levelStartScore=0;
+let readT=0, readDur=0, lastReadSec=-1; // pausa de lectura de cada pregunta
+// Segundos para leer: según la longitud de la pregunta y sus respuestas (entre 3 y 6 s)
+function readingTime(q){
+  const chars=q.q.length+q.o.join('').length;
+  return Math.max(3,Math.min(6,2+chars*0.04));
+}
+function startReading(){
+  readDur=readT=readingTime(currentQuestion); lastReadSec=-1;
+  document.getElementById('bottom').classList.add('reading');
+}
+function endReading(){
+  document.getElementById('bottom').classList.remove('reading');
+  beep(880,.12,'square',.18);
+  if(player) floatText('¡Ya!','#ffb627','play');
+}
+const PERFECT_BONUS=500; // nivel completado sin recibir golpes de enemigos
+let touchEnabled=false, isTouchDevice=false, selectedChar=0, selectedSkin=0, gameStarted=false;
+let lastTime=0, swipeStart=null, particles=[], stars=[], loopStarted=false;
+let playerStart={x:1,y:1};
+
+// ===================== DEVICE =====================
+function detectTouch(){ return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0); }
+
+// ===================== AUDIO =====================
+function ensureAudio(){
+  if(audioCtx) return;
+  try{
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)(); masterGain=audioCtx.createGain(); masterGain.gain.value=muted?0:0.25; masterGain.connect(audioCtx.destination);
+    musicGain=audioCtx.createGain(); musicGain.gain.value=0.35; musicGain.connect(masterGain);
+  }catch(e){}
+}
+function beep(freq=440,dur=0.1,type='square',vol=0.25,start=0){
+  if(!audioCtx||muted) return;
+  const o=audioCtx.createOscillator(); const g=audioCtx.createGain();
+  o.type=type; o.frequency.value=freq;
+  const t=start||audioCtx.currentTime;
+  g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g); g.connect(masterGain); o.start(t); o.stop(t+dur);
+}
+function sfxCollect(){ beep(660,.08,'square'); beep(880,.08,'square',.2,audioCtx.currentTime+.08); }
+function sfxCorrect(){ [523,659,784].forEach((f,i)=>beep(f,.12,'triangle',.25,audioCtx.currentTime+i*.1)); }
+function sfxWrong(){ beep(200,.2,'sawtooth',.3); beep(150,.2,'sawtooth',.3,audioCtx.currentTime+.15); }
+function sfxPower(){ for(let i=0;i<6;i++) beep(400+i*80,.06,'sine',.2,audioCtx.currentTime+i*.05); }
+function sfxStun(){ beep(300,.15,'square',.2); beep(200,.15,'square',.2,audioCtx.currentTime+.15); }
+function sfxVictory(){ [523,659,784,1047].forEach((f,i)=>beep(f,.18,'triangle',.3,audioCtx.currentTime+i*.15)); }
+function sfxGameOver(){ [400,330,260,200].forEach((f,i)=>beep(f,.2,'sawtooth',.3,audioCtx.currentTime+i*.18)); }
+function sfxHit(){ beep(120,.25,'sawtooth',.35); }
+function sfxTick(){ beep(1046,.05,'square',.12); }
+
+// ===================== MÚSICA =====================
+// Bucles cortos y originales, uno por nivel, generados con Web Audio (sin archivos).
+// mel/bass: semitonos sobre root (null = silencio); 16 pasos de corchea.
+const MUSIC = [
+  {bpm:112, wave:'triangle', root:72, mel:[0,4,7,9, 7,4,2,4, 0,2,4,7, 9,12,9,null], bass:[0,null,7,null, 5,null,7,null, 0,null,7,null, 5,null,4,null]}, // Playa
+  {bpm:100, wave:'triangle', root:70, mel:[0,null,4,5, 7,null,5,4, 2,null,4,2, 0,null,null,null], bass:[0,null,null,7, 5,null,null,7, 2,null,null,7, 0,null,7,null]}, // Casa
+  {bpm:120, wave:'square',   root:69, mel:[0,3,7,10, 12,10,7,3, 5,8,12,8, 7,null,3,null], bass:[0,0,null,0, 5,5,null,5, 8,8,null,8, 7,7,null,7]}, // Nave
+  {bpm:126, wave:'triangle', root:71, mel:[0,2,4,7, 4,2,0,null, 7,9,12,9, 7,4,2,null], bass:[0,null,7,7, 0,null,7,7, 5,null,12,12, 7,null,7,null]}, // Luau
+  {bpm:108, wave:'square',   root:67, mel:[0,null,7,null, 3,null,10,null, 0,null,7,null, 5,3,2,null], bass:[0,null,null,null, 3,null,null,null, 5,null,null,null, 7,null,null,null]}, // Estación
+  {bpm:116, wave:'sawtooth', root:64, mel:[0,null,3,5, 6,5,3,null, 0,null,3,7, 6,null,5,3], bass:[0,0,null,0, 0,0,null,6, 0,0,null,0, 5,5,3,3]}, // Volcán
+  {bpm:138, wave:'square',   root:69, mel:[0,1,0,7, 6,7,null,0, 3,1,0,null, 10,8,7,null], bass:[0,0,0,0, 1,1,1,1, 0,0,0,0, -2,-2,-1,-1]} // Jefe
+];
+let music={level:-1, step:0, next:0, timer:null};
+function midiHz(m){ return 440*Math.pow(2,(m-69)/12); }
+function musicNote(freq,dur,type,vol,t){
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type=type; o.frequency.value=freq;
+  g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(vol,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g); g.connect(musicGain); o.start(t); o.stop(t+dur+0.02);
+}
+function startMusic(idx){
+  if(!audioCtx||!musicGain) return; // el audio se crea con el primer clic del jugador
+  music.level=Math.min(idx,MUSIC.length-1); music.step=0; music.next=audioCtx.currentTime+0.15;
+  if(!music.timer) music.timer=setInterval(musicTick,50);
+}
+// Programa las notas con un poco de antelación para que suenen a tiempo
+function musicTick(){
+  if(!audioCtx||music.level<0) return;
+  const playing=gameStarted && !paused && !gameOver && !levelComplete && !document.hidden;
+  if(!playing){ music.next=audioCtx.currentTime+0.05; return; }
+  const M=MUSIC[music.level];
+  let bpm=M.bpm;
+  if(music.level===BOSS_LEVEL) bpm*=1+0.1*(bossPhase()-1); // el jefe acelera por fase
+  if(timer<10) bpm*=1.15;                          // tensión al final del tiempo
+  const stepDur=60/bpm/2;
+  while(music.next<audioCtx.currentTime+0.2){
+    const i=music.step%16, t=music.next;
+    if(M.mel[i]!==null) musicNote(midiHz(M.root+M.mel[i]),stepDur*.9,M.wave,0.10,t);
+    if(M.bass[i]!==null) musicNote(midiHz(M.root-24+M.bass[i]),stepDur*1.6,'triangle',0.16,t);
+    music.next+=stepDur; music.step++;
+  }
+}
+
+
+// ===================== ICONOS PIXEL-ART =====================
+// Iconos propios de 8×8 píxeles con la paleta del juego (sustituyen a los emojis, que
+// cada móvil dibuja distinto). Cada letra es un color; '.' es transparente.
+// ic(nombre) devuelve un <svg> para la interfaz; drawPxIcon() lo pinta en el canvas.
+const PX_COLORS={k:'#070821',y:'#ffb627',p:'#ff3d7f',P:'#b0174f',c:'#2de2e6',s:'#fff1d0',
+  g:'#3ddc84',G:'#1e8a4c',w:'#ffffff',r:'#8b5a2b',o:'#ff7b00',v:'#b388ff',e:'#9aa0c8',
+  M:'#ffb627',S:'#c9cde0',B:'#cd7f32'};
+const PX_ICONS={
+  star:['...yy...','...yy...','yyyyyyyy','.yyyyyy.','..yyyy..','..yyyy..','.yy..yy.','.y....y.'],
+  heart:['........','.sp..pp.','pppppppp','pppppppp','.pppppp.','..pppp..','...pp...','........'],
+  clock:['..cccc..','.cssssc.','csskssc'+'c','csskssc'+'c','csskkksc','cssssssc','.cssssc.','..cccc..'],
+  pause:['........','.ss..ss.','.ss..ss.','.ss..ss.','.ss..ss.','.ss..ss.','.ss..ss.','........'],
+  play:['.s......','.ss.....','.sss....','.ssss...','.ssss...','.sss....','.ss.....','.s......'],
+  sound:['...s....','..ss..c.','ssss.c.c','ssss.c.c','ssss.c.c','ssss.c.c','..ss..c.','...s....'],
+  mute:['...s....','..ss....','ssss.p.p','ssss..p.','ssss.p.p','ssss....','..ss....','...s....'],
+  up:['...ss...','..ssss..','.ssssss.','ssssssss','...ss...','...ss...','...ss...','........'],
+  infinity:['........','........','.ss..ss.','s..ss..s','s..ss..s','.ss..ss.','........','........'],
+  next:['........','s...s..s','ss..ss.s','sss.ssss','sss.ssss','ss..ss.s','s...s..s','........'],
+  restart:['..ssss..','.s....ss','s....sss','s.......','s......s','s......s','.s....s.','..ssss..'],
+  home:['...ss...','..ssss..','.ssssss.','ssssssss','.ss..ss.','.ss..ss.','.ss..ss.','.ssssss.'],
+  trophy:['yyyyyyyy','y.yyyy.y','y.yyyy.y','.yyyyyy.','..yyyy..','...yy...','..yyyy..','.yyyyyy.'],
+  skull:['.ssssss.','ssssssss','skksskks','skksskks','ssssssss','.sskkss.','.s.ss.s.','.ssssss.'],
+  medal1:['pp....pp','.pp..pp.','..pppp..','..MMMM..','.MMMMMM.','.MMwMMM.','.MMMMMM.','..MMMM..'],
+  medal2:['cc....cc','.cc..cc.','..cccc..','..SSSS..','.SSSSSS.','.SSwSSS.','.SSSSSS.','..SSSS..'],
+  medal3:['gg....gg','.gg..gg.','..gggg..','..BBBB..','.BBBBBB.','.BBwBBB.','.BBBBBB.','..BBBB..'],
+  palm:['.gg..gg.','gggggggg','g..rr..g','...rr...','....r...','....r...','...rr...','yyyyyyyy'],
+  house:['...pp...','..pppp..','.pppppp.','pppppppp','.ssssss.','.ssrrss.','.ssrrss.','.ssrrss.'],
+  rocket:['...ss...','..sccs..','..scss..','..ssss..','..ssss..','.pssssp.','pp.ss.pp','...oo...'],
+  flower:['..pppp..','.pp..pp.','pp.yy.pp','p.yyyy.p','p.yyyy.p','pp.yy.pp','.pp..pp.','..pppp..'],
+  satellite:['cc....cc','cc....cc','cc.ee.cc','cceeeecc','cceeeecc','cc.ee.cc','cc....cc','cc....cc'],
+  volcano:['..o.o...','...o....','..rrrr..','..roor..','.rrrorr.','.rrrrrr.','rrrrrrrr','rrrrrrrr'],
+  crown:['........','y..yy..y','yy.yy.yy','yyyyyyyy','ypyyyypy','yyyyyyyy','........','........'],
+  book:['.gggggg.','.gGGGGg.','.gGssGg.','.gGGGGg.','.gGGGGg.','.gGGGGg.','.gsssss.','.gggggg.'],
+  bubble:['.cccccc.','cccccccc','cckcckcc','cccccccc','.cccccc.','.cc.....','c.......','........'],
+  pencil:['......pp','.....ypp','....yyy.','...yyy..','..yyy...','.syy....','ss......','k.......'],
+  happy:['.yyyyyy.','yyyyyyyy','yykyykyy','yyyyyyyy','ykyyyyky','yykkkkyy','yyyyyyyy','.yyyyyy.'],
+  hurt:['.yyyyyy.','ykyyyyky','yykyykyy','ykyyyyky','yyyyyyyy','yykkkkyy','ykyyyyky','.yyyyyy.'],
+  mad:['.yyyyyy.','ykyyyyky','yykyykyy','yykyykyy','yyyyyyyy','yykkkkyy','ykyyyyky','.yyyyyy.'],
+  wow:['.yyyyyy.','yyyyyyyy','yykyykyy','yykyykyy','yyyyyyyy','yyykkyyy','yyykkyyy','.yyyyyy.'],
+  cool:['.yyyyyy.','yyyyyyyy','kkkkkkkk','ykkyykky','yyyyyyyy','ykyyyyky','yykkkkyy','.yyyyyy.'],
+  note:['..pppppp','..p....p','..p....p','..p....p','.pp...pp','ppp..ppp','pp...pp.','........'],
+  dash:['........','cccc....','...cccc.','........','..cccccc','........','cccc....','........'],
+  scream:['.vvvvvv.','vvvvvvvv','vkkvvkkv','vkkvvkkv','vvvvvvvv','vvvkkvvv','vvvkkvvv','.vvvvvv.'],
+  shield:['yyyyyyyy','yccccccy','yccyyccy','ycyyyycy','yccyyccy','.yccccy.','..yccy..','...yy...'],
+  target:['..pppp..','.pssssp.','psppppsp','pspsspsp','pspsspsp','psppppsp','.pssssp.','..pppp..'],
+  wand:['......y.','.....yyy','......y.','.....v..','....v...','...v....','..v.....','.v......'],
+  brain:['.pppppp.','pPppPppp','ppPppPpp','pPppppPp','ppPpPppp','.pppppp.','..pp....','........'],
+  key:['........','.yyy....','y...y...','y...yyyy','y...y.yy','.yyy..y.','........','........'],
+  coffee:['..s.s...','...s.s..','wwwwww..','wrrrrwww','wrrrrw.w','wrrrrwww','.wwww...','........'],
+  ukulele:['......rr','.....rr.','....rr..','.yyyr...','yyyyy...','yykyy...','yyyyy...','.yyy....'],
+  sparkle:['...y....','...y....','yyyyyyy.','...y....','...y....','......y.','.....yyy','......y.'],
+  spiral:['.vvvvvv.','v......v','v.vvvv.v','v.v..v.v','v.v.vv.v','v.v....v','v.vvvvvv','........'],
+  gamepad:['........','.eeeeee.','eekeeepe','ekkkepee','eekeeeee','eeeeeeee','ee....ee','........'],
+  phone:['.cccccc.','.cssssc.','.cssssc.','.cssssc.','.cssssc.','.cssssc.','.cccccc.','...cc...'],
+  monitor:['cccccccc','cssssssc','cssssssc','cssssssc','cccccccc','...cc...','..cccc..','........'],
+  check:['........','.......g','......gg','g....gg.','gg..gg..','.gggg...','..gg....','........'],
+  download:['...cc...','...cc...','...cc...','.cccccc.','..cccc..','...cc...','c......c','cccccccc'],
+  map:['........','cc.cc.cc','ccsccscc','cscscscc','ccsccscc','cc.cc.cc','........','........']
+};
+// Flechas del D-Pad: se generan girando la flecha hacia arriba
+(function(){
+  const rot=m=>m[0].split('').map((_,x)=>m.map(r=>r[x]).reverse().join('')); // 90° horario
+  PX_ICONS.right=rot(PX_ICONS.up); PX_ICONS.down=rot(PX_ICONS.right); PX_ICONS.left=rot(PX_ICONS.down);
+})();
+// Cada fila se agrupa en tramos del mismo color (menos rectángulos que dibujar)
+const pxRunCache={};
+function pxRuns(name){
+  if(pxRunCache[name]) return pxRunCache[name];
+  const map=PX_ICONS[name]||PX_ICONS.star, runs=[];
+  map.forEach((row,y)=>{
+    let x=0;
+    while(x<8){
+      const ch=row[x]||'.';
+      if(ch==='.'){ x++; continue; }
+      let w=1; while(x+w<8 && row[x+w]===ch) w++;
+      runs.push({x,y,w,c:PX_COLORS[ch]||'#fff'}); x+=w;
+    }
+  });
+  return pxRunCache[name]=runs;
+}
+// mono: pinta el icono entero de un solo color (p. ej. tinta sobre un botón de color)
+function ic(name,mono){
+  const runs=pxRuns(name);
+  const rects=runs.map(r=>`<rect x="${r.x}" y="${r.y}" width="${r.w}" height="1" fill="${mono||r.c}"/>`).join('');
+  return `<svg class="pxi" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true" focusable="false">${rects}</svg>`;
+}
+function drawPxIcon(ctx,name,cx,cy,size,mono){
+  const u=size/8, x0=Math.round(cx-size/2), y0=Math.round(cy-size/2);
+  for(const r of pxRuns(name)){ ctx.fillStyle=mono||r.c; ctx.fillRect(x0+r.x*u, y0+r.y*u, r.w*u+.5, u+.5); }
+}
+// Rellena los <span data-icon="..."> del HTML (data-mono opcional)
+function hydrateIcons(root=document){
+  root.querySelectorAll('[data-icon]').forEach(el=>{ el.innerHTML=ic(el.dataset.icon, el.dataset.mono?PX_COLORS[el.dataset.mono]:null); });
+}
+function escapeHtml(t){ return String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// ===================== DRAW CHARACTERS =====================
+function drawStitch(ctx,x,y,r){
+  ctx.fillStyle='#00d4ff'; ctx.beginPath(); ctx.arc(x,y,r*.9,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#0099cc'; ctx.beginPath(); ctx.arc(x,y+r*.15,r*.7,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#00d4ff';
+  ctx.beginPath(); ctx.ellipse(x-r*.7,y-r*.7,r*.35,r*.6,-.4,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x+r*.7,y-r*.7,r*.35,r*.6,.4,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#ff9ad6';
+  ctx.beginPath(); ctx.ellipse(x-r*.7,y-r*.6,r*.15,r*.35,-.4,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x+r*.7,y-r*.6,r*.15,r*.35,.4,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x-r*.25,y-r*.1,r*.18,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+r*.25,y-r*.1,r*.18,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(x-r*.22,y-r*.08,r*.09,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+r*.28,y-r*.08,r*.09,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#1a1a2e'; ctx.beginPath(); ctx.ellipse(x,y+r*.15,r*.12,r*.08,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#1a1a2e'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(x,y+r*.25,r*.2,.1,Math.PI-.1); ctx.stroke();
+}
+function drawAngel(ctx,x,y,r){
+  ctx.fillStyle='#ff5fa2'; ctx.beginPath(); ctx.arc(x,y,r*.9,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#ff8fc4'; ctx.beginPath(); ctx.arc(x,y+r*.15,r*.7,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#ff5fa2'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(x-r*.3,y-r*.8); ctx.lineTo(x-r*.6,y-r*1.3); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+r*.3,y-r*.8); ctx.lineTo(x+r*.6,y-r*1.3); ctx.stroke();
+  ctx.fillStyle='#ffd166';
+  ctx.beginPath(); ctx.arc(x-r*.6,y-r*1.3,r*.12,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+r*.6,y-r*1.3,r*.12,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x-r*.25,y-r*.1,r*.18,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+r*.25,y-r*.1,r*.18,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(x-r*.22,y-r*.08,r*.09,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+r*.28,y-r*.08,r*.09,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#000'; ctx.lineWidth=1.5;
+  for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(x-r*.35+i*4,y-r*.28);ctx.lineTo(x-r*.35+i*4,y-r*.38);ctx.stroke();}
+  for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(x+r*.15+i*4,y-r*.28);ctx.lineTo(x+r*.15+i*4,y-r*.38);ctx.stroke();}
+  ctx.fillStyle='#1a1a2e'; ctx.beginPath(); ctx.ellipse(x,y+r*.15,r*.12,r*.08,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#1a1a2e'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(x,y+r*.25,r*.2,.1,Math.PI-.1); ctx.stroke();
+}
+function drawLilo(ctx,x,y,r){
+  ctx.fillStyle='#ff6b6b'; ctx.beginPath(); ctx.arc(x,y+r*.2,r*.85,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#ffffff';
+  for(let i=0;i<6;i++){const a=i/6*Math.PI*2; ctx.beginPath(); ctx.ellipse(x+Math.cos(a)*r*.5,y+r*.2+Math.sin(a)*r*.5,r*.12,r*.22,a,0,Math.PI*2); ctx.fill();}
+  ctx.fillStyle='#ffd4a3'; ctx.beginPath(); ctx.arc(x,y-r*.55,r*.55,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#1a1a2e'; ctx.beginPath(); ctx.arc(x,y-r*.75,r*.6,Math.PI,Math.PI*2); ctx.fill();
+  ctx.fillRect(x-r*.6,y-r*.75,r*1.2,r*.3);
+  ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(x-r*.18,y-r*.55,r*.07,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+r*.18,y-r*.55,r*.07,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#a04040'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(x,y-r*.4,r*.15,.2,Math.PI-.2); ctx.stroke();
+}
+function drawEnemy(ctx,type,x,y,r){
+  if(type==='gantu'){
+    ctx.fillStyle='#7a8fa6'; ctx.beginPath(); ctx.arc(x,y,r*1.2,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#5a6f86'; ctx.fillRect(x-r*.9,y-r*.3,r*1.8,r*1.4);
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x-r*.3,y-r*.4,r*.18,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x+r*.3,y-r*.4,r*.18,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(x-r*.25,y-r*.35,r*.09,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x+r*.35,y-r*.35,r*.09,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#4a5f76';
+    ctx.beginPath(); ctx.moveTo(x-r*.7,y-r*.9); ctx.lineTo(x-r*1.1,y-r*1.4); ctx.lineTo(x-r*.4,y-r*1.0); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x+r*.7,y-r*.9); ctx.lineTo(x+r*1.1,y-r*1.4); ctx.lineTo(x+r*.4,y-r*1.0); ctx.fill();
+  } else if(type==='jumba'){
+    ctx.fillStyle='#ff9a3c'; ctx.beginPath(); ctx.arc(x,y,r*.95,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#e07a1c'; ctx.beginPath(); ctx.arc(x,y+r*.2,r*.7,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#000'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(x-r*.25,y-r*.1,r*.2,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x+r*.25,y-r*.1,r*.2,0,Math.PI*2); ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x-r*.25,y-r*.1,r*.12,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x+r*.25,y-r*.1,r*.12,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(x-r*.22,y-r*.08,r*.06,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x+r*.28,y-r*.08,r*.06,0,Math.PI*2); ctx.fill();
+  } else if(type==='pleakley'){
+    ctx.fillStyle='#6be36b'; ctx.beginPath(); ctx.arc(x,y,r*.9,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#4bc94b'; ctx.beginPath(); ctx.arc(x,y+r*.2,r*.65,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x,y-r*.15,r*.3,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(x,y-r*.1,r*.15,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x+r*.05,y-r*.18,r*.05,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#4bc94b'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x,y-r*.9); ctx.lineTo(x,y-r*1.35); ctx.stroke();
+    ctx.fillStyle='#ff6b6b'; ctx.beginPath(); ctx.arc(x,y-r*1.35,r*.1,0,Math.PI*2); ctx.fill();
+  } else if(type==='boss'){
+    const ph=bossPhase();
+    const glow=['#b388ff','#ff6b6b','#ffe066'][ph-1];
+    ctx.fillStyle='#4a2a6a'; ctx.beginPath(); ctx.arc(x,y,r*1.1,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#b388ff';
+    ctx.beginPath(); ctx.moveTo(x-r*.8,y-r*.8); ctx.lineTo(x-r*1.2,y-r*1.5); ctx.lineTo(x-r*.3,y-r*.9); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x+r*.8,y-r*.8); ctx.lineTo(x+r*1.2,y-r*1.5); ctx.lineTo(x+r*.3,y-r*.9); ctx.fill();
+    ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(x-r*.3,y-r*.1,r*.22,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x+r*.3,y-r*.1,r*.22,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#1a1a2e'; ctx.beginPath(); ctx.arc(x-r*.3,y-r*.1,r*.1,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x+r*.3,y-r*.1,r*.1,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#1a1a2e'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(x,y+r*.35,r*.35,.15,Math.PI-.15); ctx.stroke();
+  } else {
+    ctx.fillStyle='#ffe066'; ctx.beginPath(); ctx.arc(x,y,r*.9,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#e6c24a'; ctx.beginPath(); ctx.arc(x,y+r*.2,r*.65,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x-r*.25,y-r*.1,r*.18,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x+r*.25,y-r*.1,r*.18,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(x-r*.22,y-r*.08,r*.09,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x+r*.28,y-r*.08,r*.09,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#a08020'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(x,y+r*.2,r*.2,.2,Math.PI-.2); ctx.stroke();
+  }
+}
+
+// ===================== MAZE =====================
+let mazeRotated=false;
+// Compara el tamaño de casilla del laberinto normal y del transpuesto en el área disponible
+function shouldRotateMaze(){
+  const r=document.getElementById('canvasWrap').getBoundingClientRect();
+  if(!r.width||!r.height) return false;
+  const normal=Math.min(r.width/cols, r.height/rows);
+  const rotated=Math.min(r.width/rows, r.height/cols);
+  return rotated>normal*1.1;
+}
+// Transpone el laberinto en plena partida: como las casillas son cuadradas, basta con
+// intercambiar x↔y en todo (casillas, posiciones en píxeles y direcciones).
+function transposeLive(){
+  maze = maze[0].map((_,x)=>maze.map(row=>row[x]));
+  const swT=o=>{ const t=o.tx; o.tx=o.ty; o.ty=t; };
+  const swP=o=>{ const t=o.x; o.x=o.y; o.y=t; };
+  [zones,items,portals,keys,doors].forEach(list=>list.forEach(swT));
+  [player,...enemies].forEach(o=>{ swP(o); if(o.dir) swP(o.dir); if(o.nextDir) swP(o.nextDir); o._lastTile=''; });
+  if(player.warp) swT(player.warp.to);
+  particles.forEach(p=>{ swP(p); const t=p.vx; p.vx=p.vy; p.vy=t; });
+  floatTexts.forEach(swP);
+  playerStart={x:playerStart.y, y:playerStart.x};
+  mazeRotated=!mazeRotated;
+}
+function loadLevel(idx){
+  const L=LEVELS[idx];
+  maze=L.rows.map(r=>r.split(''));
+  rows=maze.length; cols=maze[0].length;
+  zones=[]; items=[]; portals=[]; keys=[]; doors=[]; enemies=[];
+  hasKey=false;
+  let spawnPoints=[];
+  for(let y=0;y<rows;y++){
+    for(let x=0;x<cols;x++){
+      const c=maze[y][x];
+      if(c==='P'){ playerStart={x,y}; maze[y][x]=' '; }
+      else if(c==='A'||c==='B'||c==='C'||c==='D'){ zones.push({tx:x,ty:y,label:c}); maze[y][x]=' '; }
+      else if(c==='E'){ spawnPoints.push({x,y}); maze[y][x]=' '; }
+      else if(c==='O'){ items.push({tx:x,ty:y,type:'coffee',active:true}); maze[y][x]=' '; }
+      else if(c==='U'){ items.push({tx:x,ty:y,type:'ukelele',active:true}); maze[y][x]=' '; }
+      else if(c==='T'){ portals.push({tx:x,ty:y}); maze[y][x]=' '; }
+      else if(c==='K'){ keys.push({tx:x,ty:y,active:true}); maze[y][x]=' '; }
+      else if(c==='X'){ doors.push({tx:x,ty:y,open:false}); maze[y][x]=' '; }
+    }
+  }
+  if(!playerStart) playerStart={x:1,y:1};
+  // En pantallas verticales (móvil) los laberintos horizontales quedan diminutos:
+  // si la versión transpuesta da casillas más grandes, se gira el laberinto.
+  // Se hace tras leer los objetos para no alterar el emparejamiento de portales.
+  mazeRotated = shouldRotateMaze();
+  if(mazeRotated){
+    maze = maze[0].map((_,x)=>maze.map(row=>row[x]));
+    const sw=o=>{ const t=o.tx; o.tx=o.ty; o.ty=t; };
+    [zones,items,portals,keys,doors].forEach(list=>list.forEach(sw));
+    playerStart={x:playerStart.y, y:playerStart.x};
+    spawnPoints=spawnPoints.map(p=>({x:p.y, y:p.x}));
+    rows=maze.length; cols=maze[0].length;
+  }
+  resizeCanvas();
+  const ch=CHARS[selectedChar];
+  const skin=(selectedChar===0)?SKINS[selectedSkin]:null;
+  const spdMul=ch.speed*(skin?skin.speed:1);
+  const hbxMul=ch.hitbox*(skin?skin.hitbox:1);
+  player={x:playerStart.x*ts+ts/2, y:playerStart.y*ts+ts/2, dir:{x:0,y:0}, nextDir:{x:0,y:0},
+    speed:2.0*spdMul, radius:(ts/2-3)*hbxMul, invuln:0, portalCd:0, char:ch};
+  const diff = survivalMode?difficulty:1;
+  L.enemies.forEach((e,i)=>{
+    const sp=spawnPoints[i % Math.max(1,spawnPoints.length)] || {x:Math.floor(cols/2),y:Math.floor(rows/2)};
+    enemies.push({x:sp.x*ts+ts/2, y:sp.y*ts+ts/2, dir:{x:0,y:0}, type:e.type,
+      speed:1.3*e.speed*diff, radius: e.type==='boss'?ts*.44:ts*.32, stun:0, scare:0, _lastTile:''});
+  });
+  const qCount = survivalMode ? Math.min(3+Math.floor(wave/2), L.questions) : L.questions;
+  levelQuestions=takeQuestions(qCount,questionRange());
+  qIndex=0; timer=survivalMode ? L.time+wave*5 : L.time;
+  levelComplete=false; gameOver=false; paused=false;
+  invuln=2; stun=0; speedBoost=0;
+  resetAbilities();
+  if(ab.id==='genio') timer+=AB.genioStart;
+  timerMax=timer; lastTickSec=-1; levelHits=0; levelStartScore=score;
+  player.facing=1; player.warp=null;
+  // Cartel grande al empezar: oleada en Supervivencia, nombre del nivel en modo normal
+  banner = survivalMode
+    ? {text:'OLEADA '+wave, sub:(levelIndex===BOSS_LEVEL?'¡Llega el Gran Consejo!':L.name), life:2.2, dur:2.2}
+    : {text:'NIVEL '+(idx+1), sub:L.name, life:1.8, dur:1.8};
+  startMusic(idx);
+  zones.forEach(z=>z._triggered=false);
+  setupQuestion();
+  resizeCanvas();
+  document.getElementById('lvlLabel').textContent = survivalMode ? 'Oleada' : 'Nivel';
+  document.getElementById('lvl').textContent = survivalMode ? wave : (levelIndex+1);
+}
+
+// Saca n preguntas sin repetir. Prefiere las del rango de dificultad pedido;
+// si ya no quedan de ese rango, usa cualquiera que no haya salido.
+function takeQuestions(n,range=[1,3]){
+  const out=[];
+  while(out.length<n){
+    if(!questionDeck.length){
+      let fresh=shuffleArr(QUESTIONS).filter(q=>!usedQuestions.has(q));
+      if(!fresh.length){ usedQuestions.clear(); fresh=shuffleArr(QUESTIONS); }
+      questionDeck=fresh;
+    }
+    let i=questionDeck.findIndex(q=>q.d>=range[0] && q.d<=range[1]);
+    if(i<0) i=0;
+    const q=questionDeck.splice(i,1)[0];
+    out.push(q); usedQuestions.add(q);
+  }
+  return out;
+}
+function setupQuestion(){
+  if(qIndex>=levelQuestions.length){ levelComplete=true; return; }
+  currentQuestion=levelQuestions[qIndex];
+  const idxs=currentQuestion.o.map((_,i)=>i).sort(()=>Math.random()-.5);
+  zones.forEach((z,i)=>{ z.optionIndex=idxs[i % idxs.length]; z.correct=(z.optionIndex===currentQuestion.c); z._triggered=false; });
+  document.getElementById('questionPanel').innerHTML=(CAT_ICONS[currentQuestion.cat]?ic(CAT_ICONS[currentQuestion.cat])+' ':'')+escapeHtml(currentQuestion.q);
+  renderAnswers();
+  startReading();
+}
+// Leyenda de respuestas bajo la pregunta: A, B, C, D con su texto, legible en cualquier
+// pantalla (en el laberinto, en móvil, las casillas solo muestran la letra).
+const ZONE_TEXT_MIN_TS=48; // por debajo de este tamaño de casilla no se pinta el texto en la zona
+function renderAnswers(){
+  const el=document.getElementById('answers'); if(!el||!currentQuestion) return;
+  el.innerHTML=[...zones].sort((a,b)=>a.label.localeCompare(b.label))
+    .map(z=>`<li><b>${z.label}</b><span>${escapeHtml(currentQuestion.o[z.optionIndex])}</span></li>`).join('');
+}
+
+// ===================== COLLISION =====================
+function isWall(tx,ty){
+  if(ty<0||ty>=rows||tx<0||tx>=cols) return true;
+  if(maze[ty][tx]==='#') return true;
+  return doors.some(d=>d.tx===tx && d.ty===ty && !d.open);
+}
+function bossPhase(){
+  const total=Math.max(1,levelQuestions.length);
+  const p=qIndex/total;
+  return p<0.34?1:(p<0.67?2:3);
+}
+function canPassPixel(x,y,r){
+  const pts=[[x-r,y-r],[x+r,y-r],[x-r,y+r],[x+r,y+r]];
+  for(const [px,py] of pts){
+    const tx=Math.floor(px/ts), ty=Math.floor(py/ts);
+    if(isWall(tx,ty)) return false;
+  }
+  return true;
+}
+function atCenter(obj){
+  const cx=obj.x-(Math.floor(obj.x/ts)*ts+ts/2);
+  const cy=obj.y-(Math.floor(obj.y/ts)*ts+ts/2);
+  return Math.abs(cx)<2 && Math.abs(cy)<2;
+}
+function tileOf(obj){ return {x:Math.floor(obj.x/ts), y:Math.floor(obj.y/ts)}; }
+
+function moveEntity(obj){
+  const phaseBoost = obj.type==='boss' ? (1+0.12*(bossPhase()-1)) : 1;
+  const speed = obj.speed * phaseBoost * (obj===player ? (speedBoost>0?1.6:1)*abilitySpeedMul() : 1) * (obj.stun>0&&obj!==player?0:1);
+  if(obj.nextDir && (obj.nextDir.x!==0||obj.nextDir.y!==0)){
+    if(atCenter(obj)){
+      const t=tileOf(obj);
+      const nx=t.x+obj.nextDir.x, ny=t.y+obj.nextDir.y;
+      if(!isWall(nx,ny)){ obj.dir={...obj.nextDir}; obj.nextDir={x:0,y:0}; }
+    }
+  }
+  if(obj.dir.x!==0||obj.dir.y!==0){
+    let nx=obj.x+obj.dir.x*speed;
+    let ny=obj.y+obj.dir.y*speed;
+    if(!canPassPixel(nx,obj.y,obj.radius)){ nx=obj.x; obj.dir={x:0,y:0}; }
+    if(!canPassPixel(obj.x,ny,obj.radius)){ ny=obj.y; if(obj.dir.x===0) obj.dir={x:0,y:0}; }
+    obj.x=nx; obj.y=ny;
+  }
+}
+
+function enemyChoose(e){
+  const t=tileOf(e);
+  const dirs=[{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+  const passable=dirs.filter(d=>!isWall(t.x+d.x,t.y+d.y));
+  const nonRev=passable.filter(d=>!(d.x===-e.dir.x && d.y===-e.dir.y));
+  const cand=nonRev.length?nonRev:passable;
+  if(cand.length===0) return {x:0,y:0};
+  if(e.stun>0) return {x:0,y:0};
+  // Susto (Espanto): huye del jugador, aunque tenga que dar media vuelta
+  if(e.scare>0) return awayFromPlayer(e,passable)||cand[0];
+  // Gruñido (Molesto): los enemigos cercanos suelen alejarse; el jefe no se intimida
+  if(ab.id==='molesto' && e.type!=='boss' && tileDist(e,player)<=AB.growlRange && Math.random()<AB.growlChance){
+    return awayFromPlayer(e,passable)||cand[0];
+  }
+  if(e.type==='gantu'){
+    const pt=tileOf(player);
+    const dist=Math.abs(pt.x-t.x)+Math.abs(pt.y-t.y);
+    if(dist<9){
+      let best=null,bestD=1e9;
+      for(const d of cand){ const nd=Math.abs(pt.x-(t.x+d.x))+Math.abs(pt.y-(t.y+d.y)); if(nd<bestD){bestD=nd;best=d;} }
+      return best||cand[0];
+    }
+    return cand[Math.floor(Math.random()*cand.length)];
+  }
+  if(e.type==='jumba'){
+    const target=zones.find(z=>z.correct)||zones[0];
+    if(target && Math.random()<0.75){
+      let best=null,bestD=1e9;
+      for(const d of cand){ const nd=Math.abs(target.tx-(t.x+d.x))+Math.abs(target.ty-(t.y+d.y)); if(nd<bestD){bestD=nd;best=d;} }
+      return best||cand[0];
+    }
+    return cand[Math.floor(Math.random()*cand.length)];
+  }
+  if(e.type==='pleakley'){
+    return cand[Math.floor(Math.random()*cand.length)];
+  }
+  if(e.type==='reuben'){
+    const pt=tileOf(player);
+    if(Math.random()<0.55){
+      let best=null,bestD=1e9;
+      for(const d of cand){ const nd=Math.abs(pt.x-(t.x+d.x))+Math.abs(pt.y-(t.y+d.y)); if(nd<bestD){bestD=nd;best=d;} }
+      return best||cand[0];
+    }
+    return cand[Math.floor(Math.random()*cand.length)];
+  }
+  if(e.type==='boss'){
+    const pt=tileOf(player);
+    const chase=0.6+0.2*bossPhase();
+    if(Math.random()<chase){
+      let best=null,bestD=1e9;
+      for(const d of cand){ const nd=Math.abs(pt.x-(t.x+d.x))+Math.abs(pt.y-(t.y+d.y)); if(nd<bestD){bestD=nd;best=d;} }
+      return best||cand[0];
+    }
+    return cand[Math.floor(Math.random()*cand.length)];
+  }
+  return cand[Math.floor(Math.random()*cand.length)];
+}
+
+// ===================== PARTICLES / STARS =====================
+function spawnParticles(x,y,color,n=10){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2, sp=1+Math.random()*3;
+    particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,color});
+  }
+}
+function updateParticles(dt){
+  for(const p of particles){ p.x+=p.vx; p.y+=p.vy; p.life-=dt/650; }
+  particles=particles.filter(p=>p.life>0);
+}
+function initStars(){
+  stars=[];
+  for(let i=0;i<70;i++) stars.push({x:Math.random(),y:Math.random(),s:Math.random()*2+1,t:Math.random()*6});
+}
+function drawStars(){
+  const dark = levelIndex>=2;
+  if(!dark) return;
+  const time=performance.now()/400;
+  for(const s of stars){
+    const a=0.3+0.7*Math.abs(Math.sin(time+s.t));
+    ctx.fillStyle=`rgba(255,255,255,${a})`;
+    ctx.fillRect(s.x*canvas.width/dpr, s.y*canvas.height/dpr, s.s, s.s);
+  }
+}
+
+// ===================== HABILIDADES =====================
+// Cada personaje/skin tiene una habilidad real. Todos los números están aquí
+// para equilibrarlos en un solo sitio (ver DISEÑO_PERSONAJES.md).
+const AB = {
+  powerUpBonus:1.3,                 // Clásico: power-ups duran +30 %
+  hulaDodge:0.30,                   // Hula: esquiva en Playa/Luau
+  upsDodge:0.20, upsTrip:0.4,       // ¡Ups!: esquiva siempre, pero tropieza
+  surferBeach:1.15, surferIndoor:0.90,
+  genioStart:10, genioPerHit:3,     // Genio: segundos extra
+  serioCoffee:0.5,                  // En Serio: café dura la mitad
+  scareRange:2, scareRadius:3, scareTime:2, scareCd:15,   // Espanto
+  jajajaBoost:1.3, jajajaTime:3, jajajaScore:0.9,         // Jajaja
+  growlRange:3, growlChance:0.7, molestoPenalty:3,        // Molesto
+  fleeRange:2, fleeBoost:1.5, fleeTime:1.5, fleeCd:10,    // ¡Huir!
+  singRange:3, singStun:1.5, singCd:12,                   // Angel
+  fragileInvuln:1.2, normalInvuln:2
+};
+const BEACH_LEVELS=[0,3], INDOOR_LEVELS=[1,2,4]; // índices de LEVELS
+let ab={id:'classic'}, floatTexts=[];
+
+// Stitch usa la habilidad de su skin; Angel y Lilo, la suya propia
+function abilityId(){ return selectedChar===0 ? SKINS[selectedSkin].id : CHARS[selectedChar].id; }
+function resetAbilities(){
+  ab={id:abilityId(), shield:false, focus:false, voodoo:false, cd:0, fleeT:0, laughT:0, tripT:0};
+  if(ab.id==='elvis') ab.shield=true;
+  if(ab.id==='serio') ab.focus=true;
+  if(ab.id==='lilo') ab.voodoo=true;
+  floatTexts=[];
+}
+function floatText(text,color='#fff',icon=null){
+  floatTexts.push({text,color,icon,x:player.x,y:player.y-ts*.6,life:1.2});
+}
+function abilitySpeedMul(){
+  if(ab.tripT>0) return 0;
+  let m=1;
+  if(ab.id==='surfer'){
+    if(BEACH_LEVELS.includes(levelIndex)) m*=AB.surferBeach;
+    else if(INDOOR_LEVELS.includes(levelIndex)) m*=AB.surferIndoor;
+  }
+  if(ab.fleeT>0) m*=AB.fleeBoost;
+  if(ab.laughT>0) m*=AB.jajajaBoost;
+  return m;
+}
+function powerUpTime(base,type){
+  let t=base;
+  if(ab.id==='classic') t*=AB.powerUpBonus;
+  if(ab.id==='serio' && type==='coffee') t*=AB.serioCoffee;
+  return t;
+}
+function hitInvuln(){ return (ab.id==='angel'||ab.id==='espanto') ? AB.fragileInvuln : AB.normalInvuln; }
+// Devuelve true si la habilidad evita el golpe de un enemigo
+function absorbEnemyHit(){
+  if(ab.shield){
+    ab.shield=false; invuln=1;
+    floatText('¡Escudo!','#ffe066','shield'); playAnim('shield',.6);
+    spawnParticles(player.x,player.y,'#ffe066',18); sfxPower();
+    return true;
+  }
+  const p = ab.id==='ups' ? AB.upsDodge : (ab.id==='hula' && BEACH_LEVELS.includes(levelIndex) ? AB.hulaDodge : 0);
+  if(p>0 && Math.random()<p){
+    invuln=1;
+    if(ab.id==='ups') ab.tripT=AB.upsTrip;
+    floatText(ab.id==='ups'?'¡Ups! Esquiva':'¡Esquiva!','#6be36b',ab.id==='ups'?'wow':'flower'); playAnim('wow',.5);
+    spawnParticles(player.x,player.y,'#6be36b',12); sfxCollect();
+    return true;
+  }
+  return false;
+}
+// Devuelve true si la habilidad perdona una respuesta incorrecta
+function absorbWrongAnswer(){
+  if(!ab.focus) return false;
+  ab.focus=false;
+  floatText('¡Concentrado!','#00d4ff','target');
+  return true;
+}
+function onCorrectAbility(){
+  if(ab.id==='genio'){ timer+=AB.genioPerHit; floatText('+'+AB.genioPerHit+' s','#ffd166','brain'); }
+  if(ab.id==='jajaja'){ ab.laughT=AB.jajajaTime; }
+}
+function correctScoreMul(){ return ab.id==='jajaja' ? AB.jajajaScore : 1; }
+function onWrongAbility(){
+  if(ab.id==='molesto'){ timer=Math.max(0,timer-AB.molestoPenalty); floatText('−'+AB.molestoPenalty+' s','#ff6b6b','mad'); }
+}
+function tileDist(a,b){ return Math.hypot(a.x-b.x,a.y-b.y)/ts; }
+function nearestEnemy(){
+  let best=null;
+  for(const e of enemies){
+    if(e.stun>0) continue;
+    const d=tileDist(e,player);
+    if(!best||d<best.d) best={e,d};
+  }
+  return best;
+}
+// Elige la dirección que más aleja al enemigo del jugador
+function awayFromPlayer(e,dirs){
+  const t=tileOf(e), pt=tileOf(player);
+  let best=null,bestD=-1;
+  for(const d of dirs){ const nd=Math.abs(pt.x-(t.x+d.x))+Math.abs(pt.y-(t.y+d.y)); if(nd>bestD){bestD=nd;best=d;} }
+  return best;
+}
+// Habilidades automáticas (sin botón: funcionan igual con teclado, D-Pad y swipe)
+function updateAbilities(dt){
+  const s=dt/1000;
+  if(ab.cd>0) ab.cd-=s;
+  if(ab.fleeT>0) ab.fleeT-=s;
+  if(ab.laughT>0) ab.laughT-=s;
+  if(ab.tripT>0) ab.tripT-=s;
+  for(const e of enemies) if(e.scare>0) e.scare-=s;
+  for(const f of floatTexts){ f.y-=s*ts*.8; f.life-=s; }
+  floatTexts=floatTexts.filter(f=>f.life>0);
+  if(ab.cd>0) return;
+  const near=nearestEnemy();
+  if(!near) return;
+  if(ab.id==='angel' && near.d<=AB.singRange){
+    near.e.stun=Math.max(near.e.stun,AB.singStun); ab.cd=AB.singCd;
+    playAnim('sing',.8); floatText('¡Canto!','#ff5fa2','note'); sfxStun();
+    spawnParticles(near.e.x,near.e.y,'#ff5fa2',12);
+  } else if(ab.id==='espanto' && near.d<=AB.scareRange){
+    for(const e of enemies){
+      if(tileDist(e,player)<=AB.scareRadius){ e.scare=AB.scareTime; e.dir={x:-e.dir.x,y:-e.dir.y}; e._lastTile=''; }
+    }
+    ab.cd=AB.scareCd; playAnim('scare',.7); floatText('¡Susto!','#b388ff','scream'); sfxStun();
+  } else if(ab.id==='uir' && near.d<=AB.fleeRange){
+    ab.fleeT=AB.fleeTime; ab.cd=AB.fleeCd;
+    playAnim('flee',AB.fleeTime); floatText('¡Huir!','#00d4ff','dash');
+  }
+}
+function abilityStatus(){
+  const cd=v=>v>0?v.toFixed(1)+'s':'listo';
+  switch(ab.id){
+    case 'elvis': return ab.shield?ic('shield')+' Escudo':'';
+    case 'serio': return ab.focus?ic('target')+' Enfoque':'';
+    case 'lilo': return ab.voodoo?ic('wand')+' Vudú listo':'';
+    case 'angel': return ic('note')+' Canto '+cd(ab.cd);
+    case 'espanto': return ic('scream')+' Susto '+cd(ab.cd);
+    case 'uir': return ic('dash')+(ab.fleeT>0?' ¡Huyendo!':' Huida '+cd(ab.cd));
+    case 'jajaja': return ab.laughT>0?ic('happy')+` Risa ${ab.laughT.toFixed(1)}s`:'';
+    default: return '';
+  }
+}
+
+// ===================== PORTALES / CARRERA / TIEMPO =====================
+// Destino de cada portal: por defecto parejas (1↔2, 3↔4); un nivel puede definir
+// portalTo con el índice de destino de cada portal (p. ej. un ciclo 1→2→3→1).
+function portalDest(i){
+  const L=LEVELS[levelIndex];
+  if(L.portalTo && L.portalTo[i]!==undefined) return L.portalTo[i];
+  return i%2===0 ? i+1 : i-1;
+}
+function sfxWarp(){ for(let i=0;i<5;i++) beep(900-i*120,.06,'sine',.18,audioCtx?audioCtx.currentTime+i*.04:0); }
+function updateWarp(dt){
+  const w=player.warp;
+  w.t+=dt/1000;
+  if(!w.jumped && w.t>=w.dur/2){
+    w.jumped=true;
+    player.x=w.to.tx*ts+ts/2; player.y=w.to.ty*ts+ts/2;
+    spawnParticles(player.x,player.y,'#b388ff',14);
+  }
+  if(w.t>=w.dur) player.warp=null;
+}
+// Escala/transparencia del jugador durante el teletransporte (1 = normal)
+function warpScale(){
+  const w=player.warp; if(!w) return 1;
+  const h=w.dur/2;
+  return w.t<h ? 1-w.t/h : (w.t-h)/h;
+}
+function spawnDust(x,y){
+  for(let i=0;i<2;i++){
+    particles.push({x:x+(Math.random()-.5)*ts*.2, y, vx:(Math.random()-.5)*.6, vy:-Math.random()*.5, life:.45, color:'rgba(230,220,200,.8)'});
+  }
+}
+function updateTimeBar(){
+  const pct=Math.max(0,Math.min(1,timer/Math.max(1,timerMax)));
+  if(timer>timerMax) timerMax=timer;
+  const fill=document.getElementById('timeFill');
+  fill.style.width=(pct*100).toFixed(1)+'%';
+  fill.className = timer<10 ? 'danger' : (pct<.4 ? 'warn' : '');
+  document.getElementById('timerStat').classList.toggle('danger',timer<10);
+}
+
+// ===================== UPDATE =====================
+function update(dt){
+  if(gameOver||levelComplete||paused) return;
+  // Pausa de lectura: al salir una pregunta nueva todo se congela unos segundos
+  // (ni enemigos ni reloj) para poder leer la pregunta y las respuestas con calma.
+  if(readT>0){
+    readT-=dt/1000;
+    animTime+=dt/1000;
+    if(banner){ banner.life-=dt/1000; if(banner.life<=0) banner=null; }
+    const sec=Math.ceil(readT);
+    if(readT<=0){ readT=0; endReading(); }
+    else if(sec!==lastReadSec){ lastReadSec=sec; beep(520,.05,'triangle',.12); }
+    return;
+  }
+  timer -= dt/1000;
+  if(timer<=0){ timer=0; gameOver=true; sfxGameOver(); showEnd(false); return; }
+  // Alerta: tic-tac cada segundo cuando quedan menos de 10 s
+  if(timer<10){ const sec=Math.ceil(timer); if(sec!==lastTickSec){ lastTickSec=sec; sfxTick(); } }
+  if(banner){ banner.life-=dt/1000; if(banner.life<=0) banner=null; }
+  animTime+=dt/1000;
+  if(playerAnim.timer>0){ playerAnim.timer-=dt/1000; if(playerAnim.timer<=0) playerAnim.type='idle'; }
+  if(invuln>0) invuln-=dt/1000;
+  if(stun>0) stun-=dt/1000;
+  if(speedBoost>0) speedBoost-=dt/1000;
+  updateAbilities(dt);
+  if(player.warp) updateWarp(dt); else moveEntity(player);
+  if(player.dir.x!==0) player.facing=player.dir.x;
+  // Polvo a los pies al correr
+  if(!player.warp && (player.dir.x!==0||player.dir.y!==0) && abilitySpeedMul()>0){
+    dustT-=dt/1000;
+    if(dustT<=0){ dustT=.16; spawnDust(player.x-player.dir.x*player.radius*.8, player.y+player.radius*.7); }
+  }
+  if(speedBoost>0 && Math.random()<.35) spawnParticles(player.x,player.y,'#ffd166',1);
+  if(player.portalCd>0) player.portalCd-=dt/1000;
+  if(player.portalCd<=0 && !player.warp && portals.length>=2){
+    const pt=tileOf(player);
+    const idx=portals.findIndex(p=>p.tx===pt.x && p.ty===pt.y);
+    if(idx>=0){
+      const partner=portals[portalDest(idx)];
+      // Animación: se encoge y desvanece, salta al otro portal y reaparece
+      if(partner){ player.warp={t:0, dur:.5, jumped:false, to:partner}; player.portalCd=1.3; sfxWarp(); spawnParticles(player.x,player.y,'#b388ff',12); }
+    }
+  }
+  for(const e of enemies){
+    if(e.stun>0) e.stun-=dt/1000;
+    if(atCenter(e)){
+      const key=tileOf(e).x+','+tileOf(e).y;
+      if(e._lastTile!==key){ e.dir=enemyChoose(e); e._lastTile=key; }
+    }
+    moveEntity(e);
+    const dx=e.x-player.x, dy=e.y-player.y;
+    const dist=Math.hypot(dx,dy);
+    if(dist<player.radius+e.radius && invuln<=0 && e.stun<=0 && !player.warp){
+      if(absorbEnemyHit()) continue;
+      levelHits++;
+      lives--; document.getElementById('lives').textContent=lives;
+      playAnim('hurt',.7);
+      spawnParticles(player.x,player.y,'#ff6b6b',14);
+      sfxHit();
+      if(lives<=0){ gameOver=true; sfxGameOver(); showEnd(false); return; }
+      // reset player to first path tile
+      let found=false;
+      for(let y=0;y<rows&&!found;y++) for(let x=0;x<cols&&!found;x++){
+        if(maze[y][x]!=='#'){ player.x=x*ts+ts/2; player.y=y*ts+ts/2; found=true; }
+      }
+      player.dir={x:0,y:0}; player.nextDir={x:0,y:0};
+      invuln=hitInvuln();
+    }
+  }
+  for(const it of items){
+    if(!it.active) continue;
+    const ix=it.tx*ts+ts/2, iy=it.ty*ts+ts/2;
+    if(Math.hypot(player.x-ix,player.y-iy)<ts*.6){
+      it.active=false;
+      if(it.type==='coffee'){ speedBoost=powerUpTime(5,'coffee'); playAnim('cool',.6); sfxPower(); spawnParticles(ix,iy,'#ffd166',14); }
+      else { const t=powerUpTime(3,'ukelele'); stun=t; enemies.forEach(e=>e.stun=t); playAnim('wow',.7); sfxStun(); spawnParticles(ix,iy,'#b388ff',14); }
+    }
+  }
+  for(const k of keys){
+    if(!k.active) continue;
+    const kx=k.tx*ts+ts/2, ky=k.ty*ts+ts/2;
+    if(Math.hypot(player.x-kx,player.y-ky)<ts*.6){
+      k.active=false; hasKey=true;
+      sfxCollect(); spawnParticles(kx,ky,'#ffe066',16);
+    }
+  }
+  if(hasKey||ab.voodoo){
+    for(const d of doors){
+      if(d.open) continue;
+      const dx=d.tx*ts+ts/2, dy=d.ty*ts+ts/2;
+      if(Math.hypot(player.x-dx,player.y-dy)<ts*.8){
+        d.open=true;
+        // Se gasta primero la llave K; el vudú de Lilo se guarda si hay llave
+        if(hasKey) hasKey=false;
+        else { ab.voodoo=false; floatText('¡Vudú!','#ff6b6b','wand'); }
+        sfxPower(); spawnParticles(dx,dy,'#ffe066',22);
+        break;
+      }
+    }
+  }
+  for(const z of zones){
+    const zx=z.tx*ts+ts/2, zy=z.ty*ts+ts/2;
+    if(Math.hypot(player.x-zx,player.y-zy)<ts*.55){
+      if(!z._triggered){
+        z._triggered=true;
+        if(z.correct){
+          playAnim('happy',.9);
+          score+=Math.round((100+Math.floor(timer*2))*correctScoreMul());
+          document.getElementById('score').textContent=score;
+          spawnParticles(zx,zy,'#2ecc71',18);
+          sfxCorrect();
+          timer+=5;
+          onCorrectAbility();
+          qIndex++;
+          zones.forEach(zz=>zz._triggered=false);
+          if(qIndex>=levelQuestions.length){ levelComplete=true; showLevelSummary(); }
+          else { setupQuestion(); }
+        } else {
+          playAnim('mad',.7);
+          spawnParticles(zx,zy,'#e74c3c',12);
+          sfxWrong();
+          onWrongAbility();
+          if(absorbWrongAnswer()) continue;
+          lives--; document.getElementById('lives').textContent=lives;
+          if(lives<=0){ gameOver=true; sfxGameOver(); showEnd(false); return; }
+          let found=false;
+          for(let y=0;y<rows&&!found;y++) for(let x=0;x<cols&&!found;x++){
+            if(maze[y][x]!=='#'){ player.x=x*ts+ts/2; player.y=y*ts+ts/2; found=true; }
+          }
+          player.dir={x:0,y:0}; player.nextDir={x:0,y:0};
+          invuln=hitInvuln();
+          zones.forEach(zz=>zz._triggered=false);
+        }
+      }
+    } else {
+      z._triggered=false;
+    }
+  }
+  document.getElementById('timer').textContent=Math.ceil(timer);
+  updateTimeBar();
+  let pstat = hasKey ? ic('key')+' Llave lista' : '';
+  if(speedBoost>0) pstat += (pstat?' · ':'')+ic('coffee')+` Velocidad ${speedBoost.toFixed(1)}s`;
+  if(stun>0) pstat += (pstat?' · ':'')+ic('ukulele')+` Aturde ${stun.toFixed(1)}s`;
+  const abs=abilityStatus();
+  if(abs) pstat += (pstat?' · ':'')+abs;
+  setHtmlIfChanged('powerStatus',pstat);
+}
+
+function setHtmlIfChanged(id,html){ const el=document.getElementById(id); if(el._last!==html){ el._last=html; el.innerHTML=html; } }
+
+// ===================== RENDER =====================
+function render(){
+  if(!ctx) return;
+  const L=LEVELS[levelIndex]; const th=L.theme;
+  ctx.fillStyle=th.bg; ctx.fillRect(0,0,canvas.width,canvas.height);
+  const bgImg=ASSETS.background;
+  if(bgImg && !PIXEL_MODE){ ctx.globalAlpha=0.18; ctx.drawImage(bgImg,0,0,canvas.width/dpr,canvas.height/dpr); ctx.globalAlpha=1; }
+  drawStars();
+  for(let y=0;y<rows;y++){
+    for(let x=0;x<cols;x++){
+      const px=offX+x*ts, py=offY+y*ts;
+      if(maze[y][x]==='#'){
+        ctx.fillStyle=th.wall; ctx.fillRect(px,py,ts,ts);
+        ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.lineWidth=1; ctx.strokeRect(px+.5,py+.5,ts-1,ts-1);
+        if(L.lava && (x*7+y*13)%4===0) drawLavaCrack(px,py,x,y);
+      } else {
+        ctx.fillStyle=th.path; ctx.fillRect(px,py,ts,ts);
+      }
+    }
+  }
+  for(const d of doors){
+    const px=offX+d.tx*ts, py=offY+d.ty*ts;
+    if(d.open){
+      ctx.fillStyle='rgba(255,224,102,.15)'; ctx.fillRect(px+1,py+1,ts-2,ts-2);
+      ctx.strokeStyle='rgba(255,224,102,.55)'; ctx.lineWidth=1;
+      ctx.strokeRect(px+2.5,py+2.5,ts-5,ts-5);
+    } else {
+      ctx.fillStyle='#8b5a2b'; ctx.fillRect(px,py,ts,ts);
+      ctx.fillStyle='#5a3a18';
+      for(let i=1;i<=3;i++) ctx.fillRect(px+i*ts/4-ts*.06,py+ts*.08,ts*.12,ts*.84);
+      ctx.strokeStyle='#ffe066'; ctx.lineWidth=Math.max(1,ts*.06);
+      ctx.strokeRect(px+ts*.06,py+ts*.06,ts*.88,ts*.88);
+      ctx.fillStyle='#ffe066'; ctx.fillRect(px+ts*.35,py+ts*.5,ts*.3,ts*.22);
+      ctx.strokeStyle='#ffe066'; ctx.lineWidth=Math.max(1,ts*.05);
+      ctx.beginPath(); ctx.arc(px+ts*.5,py+ts*.5,ts*.12,Math.PI,0); ctx.stroke();
+    }
+  }
+  for(const k of keys){
+    if(!k.active) continue;
+    const px=offX+k.tx*ts+ts/2;
+    const py=offY+k.ty*ts+ts/2+Math.sin(performance.now()/300+k.tx)*ts*.08;
+    ctx.strokeStyle='#ffe066'; ctx.lineWidth=Math.max(1.5,ts*.09);
+    ctx.beginPath(); ctx.arc(px,py-ts*.18,ts*.16,0,Math.PI*2); ctx.stroke();
+    ctx.fillStyle='#ffe066';
+    ctx.fillRect(px-ts*.045,py-ts*.04,ts*.09,ts*.34);
+    ctx.fillRect(px+ts*.02,py+ts*.18,ts*.14,ts*.07);
+    ctx.fillRect(px+ts*.02,py+ts*.28,ts*.11,ts*.07);
+  }
+  for(const it of items){
+    if(!it.active) continue;
+    const px=offX+it.tx*ts+ts/2, py=offY+it.ty*ts+ts/2;
+    if(PIXEL_MODE && drawPixel(ctx,it.type,px,py,ts*.7)){ /* pixel icon */ }
+    else if(!PIXEL_MODE && drawAsset(ctx,it.type==='coffee'?ASSETS.coffee:ASSETS.ukelele,px,py,ts*.7)){ /* img */ }
+    else if(it.type==='coffee'){
+      ctx.fillStyle='#6f4e37'; ctx.fillRect(px-ts*.25,py-ts*.1,ts*.5,ts*.35);
+      ctx.fillStyle='#fff'; ctx.fillRect(px-ts*.22,py-ts*.05,ts*.44,ts*.22);
+      ctx.fillStyle='#6f4e37'; ctx.fillRect(px-ts*.18,py-ts*.25,ts*.36,ts*.12);
+    } else {
+      ctx.fillStyle='#8b5a2b'; ctx.beginPath(); ctx.ellipse(px,py+ts*.1,ts*.25,ts*.3,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#c9a24a'; ctx.fillRect(px-ts*.05,py-ts*.45,ts*.1,ts*.4);
+      ctx.fillStyle='#ffd166'; ctx.beginPath(); ctx.arc(px,py-ts*.45,ts*.08,0,Math.PI*2); ctx.fill();
+    }
+  }
+  for(const p of portals){
+    const px=offX+p.tx*ts+ts/2, py=offY+p.ty*ts+ts/2;
+    const pulse=1+Math.sin(performance.now()/250+p.tx)*.08;
+    ctx.fillStyle='rgba(179,136,255,.55)'; ctx.beginPath(); ctx.arc(px,py,ts*.32*pulse,0,Math.PI*2); ctx.fill();
+    // Anillos que giran en sentidos opuestos
+    const a=performance.now()/400;
+    ctx.strokeStyle='#b388ff'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(px,py,ts*.36*pulse,a,a+Math.PI*1.4); ctx.stroke();
+    ctx.strokeStyle='#e0d0ff';
+    ctx.beginPath(); ctx.arc(px,py,ts*.26*pulse,-a*1.5,-a*1.5+Math.PI); ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.font=`bold ${Math.floor(ts*.3)}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; drawPxIcon(ctx,'spiral',px,py,ts*.34);
+    // Con destinos configurados, cada portal muestra su número para ver el recorrido
+    if(L.portalTo){ ctx.font=`bold ${Math.max(9,Math.floor(ts*.28))}px sans-serif`; ctx.lineWidth=3; ctx.strokeStyle='#1a0b3a';
+      const n=String(portals.indexOf(p)+1); ctx.strokeText(n,px+ts*.3,py-ts*.3); ctx.fillStyle='#ffd166'; ctx.fillText(n,px+ts*.3,py-ts*.3); }
+  }
+  for(const z of zones){
+    const px=offX+z.tx*ts, py=offY+z.ty*ts;
+    // Todas las zonas iguales: el color NO debe delatar la respuesta correcta.
+    // Placa oscura para que el texto se lea sobre cualquier tema.
+    ctx.fillStyle='rgba(7,8,33,.82)'; ctx.fillRect(px+2,py+2,ts-4,ts-4);
+    ctx.strokeStyle=th.accent; ctx.lineWidth=2; ctx.strokeRect(px+2,py+2,ts-4,ts-4);
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    // Casillas pequeñas (móvil): solo la letra, grande. Las respuestas se leen en el
+    // panel inferior (#answers), donde caben con un tamaño de letra cómodo.
+    if(ts<ZONE_TEXT_MIN_TS){
+      ctx.fillStyle='#ffb627'; ctx.font=`900 ${Math.floor(ts*.62)}px sans-serif`;
+      ctx.fillText(z.label, px+ts/2, py+ts*.54);
+      continue;
+    }
+    ctx.fillStyle='#ffb627'; ctx.font=`bold ${Math.floor(ts*.35)}px sans-serif`;
+    ctx.fillText(z.label, px+ts/2, py+ts*.22);
+    ctx.fillStyle='#fff1d0'; ctx.font=`bold ${Math.floor(ts*.2)}px sans-serif`;
+    const opt=currentQuestion?currentQuestion.o[z.optionIndex]:'';
+    const words=String(opt).split(' ');
+    let line=''; let yy=py+ts*.55;
+    for(const w of words){
+      const test=line?line+' '+w:w;
+      if(ctx.measureText(test).width>ts-6 && line){ ctx.fillText(line,px+ts/2,yy); line=w; yy+=ts*.2; }
+      else line=test;
+    }
+    if(line) ctx.fillText(line,px+ts/2,yy);
+  }
+  for(const e of enemies){
+    const ex=offX+e.x, ey=offY+e.y;
+    if(e.type==='boss'){
+      const ph=bossPhase();
+      const aura=['#b388ff','#ff6b6b','#ffe066'][ph-1];
+      ctx.globalAlpha=0.22+0.1*Math.sin(performance.now()/180);
+      ctx.fillStyle=aura;
+      ctx.beginPath(); ctx.arc(ex,ey,e.radius*(1.5+0.12*ph),0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha=1;
+      ctx.strokeStyle=aura; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(ex,ey,e.radius*(1.5+0.12*ph),0,Math.PI*2); ctx.stroke();
+      ctx.fillStyle='#fff'; ctx.font=`bold ${Math.floor(ts*.25)}px sans-serif`;
+      ctx.textAlign='center'; ctx.fillText('F'+ph,ex,ey-e.radius*1.9);
+    }
+    if(e.stun>0) ctx.globalAlpha=0.5;
+    if(PIXEL_MODE){ drawPixel(ctx,e.type,ex,ey,e.radius*2.6); }
+    else {
+      if(!drawAsset(ctx,ASSETS[e.type],ex,ey,e.radius*2.2)){ drawEnemy(ctx,e.type,ex,ey,e.radius); }
+    }
+    ctx.globalAlpha=1;
+    if(e.stun>0){ drawPxIcon(ctx,'sparkle',ex,ey-e.radius*1.6,ts*.36); }
+  }
+  const ppx=offX+player.x, ppy=offY+player.y;
+  if(!(invuln>0 && Math.floor(invuln*10)%2===0)){
+    drawPlayerAnimated(ctx,ppx,ppy,player.radius*(PIXEL_MODE?2.6:2.2));
+  }
+  for(const p of particles){
+    ctx.globalAlpha=Math.max(0,p.life);
+    ctx.fillStyle=p.color;
+    ctx.fillRect(offX+p.x-2,offY+p.y-2,4,4);
+  }
+  ctx.globalAlpha=1;
+  drawBanner();
+  if(readT>0) drawReadingCountdown();
+  // Textos flotantes de habilidades
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.font=`bold ${Math.max(10,Math.floor(ts*.32))}px sans-serif`;
+  for(const f of floatTexts){
+    ctx.globalAlpha=Math.min(1,f.life);
+    // Icono pixel-art + texto, centrados juntos
+    const isz=f.icon?Math.max(12,Math.floor(ts*.42)):0, gap=f.icon?4:0;
+    const tw=ctx.measureText(f.text).width, x0=offX+f.x-(isz+gap+tw)/2, y=offY+f.y;
+    if(f.icon) drawPxIcon(ctx,f.icon,x0+isz/2,y,isz);
+    ctx.textAlign='left';
+    ctx.lineWidth=3; ctx.strokeStyle='rgba(0,0,0,.7)'; ctx.strokeText(f.text,x0+isz+gap,y);
+    ctx.fillStyle=f.color; ctx.fillText(f.text,x0+isz+gap,y);
+    ctx.textAlign='center';
+  }
+  ctx.globalAlpha=1;
+}
+
+// Grieta de lava que palpita en algunos muros del Volcán
+function drawLavaCrack(px,py,x,y){
+  const glow=.55+.45*Math.sin(performance.now()/350+x*.9+y*1.3);
+  ctx.save();
+  ctx.strokeStyle=`rgba(255,${Math.floor(90+80*glow)},0,${.5+.5*glow})`;
+  ctx.lineWidth=Math.max(1.5,ts*.08);
+  ctx.shadowColor='#ff5a00'; ctx.shadowBlur=6*glow;
+  ctx.beginPath();
+  ctx.moveTo(px+ts*.2,py+ts*.15); ctx.lineTo(px+ts*.45,py+ts*.45);
+  ctx.lineTo(px+ts*.35,py+ts*.7); ctx.lineTo(px+ts*.7,py+ts*.88);
+  ctx.stroke();
+  ctx.restore();
+}
+// Aviso de la pausa de lectura: placa arriba del laberinto con la cuenta atrás y una
+// barra que se vacía. El laberinto se oscurece un poco para dirigir la vista a la pregunta.
+function drawReadingCountdown(){
+  const W=canvas.width/dpr, H=canvas.height/dpr;
+  ctx.save();
+  ctx.fillStyle='rgba(7,8,33,.35)'; ctx.fillRect(0,0,W,H);
+  const fs=Math.max(10,Math.min(14,W/40));
+  ctx.font=`${fs}px 'Press Start 2P', monospace`; ctx.textBaseline='middle'; ctx.textAlign='left';
+  const label='Lee la pregunta', num=String(Math.ceil(readT));
+  const isz=fs*1.4, gap=10, tw=ctx.measureText(label).width, nw=ctx.measureText(num).width*1.6;
+  const pw=isz+gap+tw+gap+nw+28, ph=fs*2.8, px=(W-pw)/2, py=Math.max(8,offY+8);
+  ctx.fillStyle='#070821'; ctx.fillRect(px+4,py+4,pw,ph);          // sombra dura
+  ctx.fillStyle='#1b1f5e'; ctx.fillRect(px,py,pw,ph);
+  ctx.strokeStyle='#ffb627'; ctx.lineWidth=3; ctx.strokeRect(px+1.5,py+1.5,pw-3,ph-3);
+  drawPxIcon(ctx,'book',px+14+isz/2,py+ph/2-3,isz);
+  ctx.fillStyle='#fff1d0'; ctx.fillText(label,px+14+isz+gap,py+ph/2-3);
+  ctx.fillStyle='#ffb627'; ctx.font=`${fs*1.6}px 'Press Start 2P', monospace`;
+  ctx.fillText(num,px+14+isz+gap+tw+gap,py+ph/2-2);
+  // barra de tiempo de lectura
+  const bw=pw-12, frac=Math.max(0,readT/readDur);
+  ctx.fillStyle='#070821'; ctx.fillRect(px+6,py+ph-9,bw,4);
+  ctx.fillStyle='#2de2e6'; ctx.fillRect(px+6,py+ph-9,bw*frac,4);
+  ctx.restore();
+}
+// Cartel grande de oleada / nivel: entra con zoom y se desvanece
+function drawBanner(){
+  if(!banner) return;
+  const W=canvas.width/dpr, H=canvas.height/dpr;
+  const t=1-banner.life/banner.dur;           // 0 → 1
+  const alpha=t<.15 ? t/.15 : (banner.life<.4 ? banner.life/.4 : 1);
+  const zoom=t<.15 ? .6+.4*(t/.15) : 1;
+  ctx.save();
+  ctx.globalAlpha=alpha*.55; ctx.fillStyle='#000'; ctx.fillRect(0,H*.36,W,H*.28);
+  ctx.globalAlpha=alpha;
+  ctx.translate(W/2,H/2); ctx.scale(zoom,zoom);
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  const big=Math.max(18,Math.min(W/10,64));
+  ctx.font=`${big}px 'Press Start 2P', monospace`;
+  ctx.lineWidth=6; ctx.strokeStyle='#1a0b3a'; ctx.strokeText(banner.text,0,-big*.25);
+  ctx.fillStyle='#ffd166'; ctx.shadowColor='#00d4ff'; ctx.shadowBlur=18; ctx.fillText(banner.text,0,-big*.25);
+  ctx.shadowBlur=0;
+  ctx.font=`bold ${Math.max(12,big*.32)}px sans-serif`; ctx.fillStyle='#cfe';
+  if(banner.subIcon){
+    const isz=Math.max(12,big*.36), tw=ctx.measureText(banner.sub).width;
+    drawPxIcon(ctx,banner.subIcon,-(tw+isz+6)/2+isz/2,big*.75,isz);
+    ctx.fillText(banner.sub,(isz+6)/2,big*.75);
+  } else ctx.fillText(banner.sub,0,big*.75);
+  ctx.restore();
+}
+
+// ===================== RESIZE =====================
+function resizeCanvas(){
+  const wrap=document.getElementById('canvasWrap');
+  const rect=wrap.getBoundingClientRect();
+  dpr=window.devicePixelRatio||1;
+  canvas.width=Math.floor(rect.width*dpr);
+  canvas.height=Math.floor(rect.height*dpr);
+  canvas.style.width=rect.width+'px';
+  canvas.style.height=rect.height+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  if(maze.length){
+    cols=maze[0].length; rows=maze.length;
+    // Si se gira el dispositivo a mitad de nivel, el laberinto se reorienta en vivo
+    if(player && shouldRotateMaze()){ transposeLive(); cols=maze[0].length; rows=maze.length; }
+    const availW=rect.width, availH=rect.height;
+    const oldTs=ts;
+    ts=Math.floor(Math.min(availW/cols, availH/rows));
+    if(ts<12) ts=12;
+    const ratio = oldTs>0 ? ts/oldTs : 1;
+    if(player && ratio!==1){ player.x*=ratio; player.y*=ratio; player.speed*=ratio; player.radius*=(ts/oldTs); }
+    enemies.forEach(e=>{ if(ratio!==1){ e.x*=ratio; e.y*=ratio; e.speed*=ratio; e.radius*=(ts/oldTs); } });
+    offX=Math.floor((availW-cols*ts)/2);
+    offY=Math.floor((availH-rows*ts)/2);
+  }
+}
+
+// ===================== INPUT =====================
+function setDir(dx,dy){ if(player) player.nextDir={x:dx,y:dy}; }
+const KEYMAP={'ArrowUp':{x:0,y:-1},'ArrowDown':{x:0,y:1},'ArrowLeft':{x:-1,y:0},'ArrowRight':{x:1,y:0},
+ 'w':{x:0,y:-1},'s':{x:0,y:1},'a':{x:-1,y:0},'d':{x:1,y:0},'W':{x:0,y:-1},'S':{x:0,y:1},'A':{x:-1,y:0},'D':{x:1,y:0}};
+document.addEventListener('keydown',e=>{
+  const d=KEYMAP[e.key];
+  if(d){ e.preventDefault(); setDir(d.x,d.y); }
+  if(e.key==='p'||e.key==='P'||e.key==='Escape'){ document.getElementById('pauseBtn').click(); }
+});
+// D-pad
+document.querySelectorAll('#dpad button[data-dir]').forEach(b=>{
+  const handler=()=>{ const dir=b.dataset.dir;
+    if(dir==='up') setDir(0,-1); if(dir==='down') setDir(0,1); if(dir==='left') setDir(-1,0); if(dir==='right') setDir(1,0);
+  };
+  b.addEventListener('touchstart',e=>{e.preventDefault();handler();},{passive:false});
+  b.addEventListener('mousedown',handler);
+});
+// swipe
+const canvasEl=document.getElementById('game');
+// La distancia mínima del gesto depende del tamaño de pantalla (5 % del lado corto,
+// entre 14 y 40 px). Se reconoce ya durante el movimiento, así se pueden encadenar giros
+// sin levantar el dedo.
+function swipeThreshold(){ return Math.max(14, Math.min(40, Math.min(innerWidth,innerHeight)*0.05)); }
+function trySwipe(t){
+  const dx=t.clientX-swipeStart.x, dy=t.clientY-swipeStart.y;
+  if(Math.hypot(dx,dy)<swipeThreshold()) return false;
+  if(Math.abs(dx)>Math.abs(dy)){ setDir(dx>0?1:-1,0); } else { setDir(0,dy>0?1:-1); }
+  return true;
+}
+canvasEl.addEventListener('touchstart',e=>{ if(e.touches.length){ swipeStart={x:e.touches[0].clientX,y:e.touches[0].clientY}; } },{passive:true});
+canvasEl.addEventListener('touchmove',e=>{
+  if(!swipeStart||!e.touches.length) return;
+  const t=e.touches[0];
+  if(trySwipe(t)) swipeStart={x:t.clientX,y:t.clientY};
+},{passive:true});
+canvasEl.addEventListener('touchend',e=>{
+  if(!swipeStart) return;
+  trySwipe(e.changedTouches[0]);
+  swipeStart=null;
+},{passive:true});
+
+// ===================== GAMEPAD =====================
+// Cruceta (botones 12-15) o stick izquierdo para moverse, Start (9) para pausar
+// y A (0) para pulsar el botón principal de la pantalla visible.
+let padPrev={a:false,start:false};
+function pollGamepad(){
+  if(!navigator.getGamepads) return;
+  let pads; try{ pads=navigator.getGamepads(); }catch(e){ return; }
+  for(const gp of pads){
+    if(!gp) continue;
+    const b=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);
+    const ax=gp.axes[0]||0, ay=gp.axes[1]||0, DZ=.5;
+    if(b(12)||ay<-DZ) setDir(0,-1);
+    else if(b(13)||ay>DZ) setDir(0,1);
+    else if(b(14)||ax<-DZ) setDir(-1,0);
+    else if(b(15)||ax>DZ) setDir(1,0);
+    const a=b(0), start=b(9);
+    if(start && !padPrev.start) document.getElementById('pauseBtn').click();
+    if(a && !padPrev.a) pressPrimaryButton();
+    padPrev={a,start};
+    return; // solo el primer mando conectado
+  }
+}
+function pressPrimaryButton(){
+  const visible=id=>document.getElementById(id).style.display!=='none';
+  if(visible('pauseOverlay')) document.getElementById('resumeBtn').click();
+  else if(visible('startOverlay')) document.getElementById('startBtn').click();
+  else if(visible('levelOverlay')) document.getElementById('nextLevelBtn').click();
+  else if(visible('endOverlay')) document.getElementById('replayBtn').click();
+}
+window.addEventListener('gamepadconnected',()=>{
+  document.getElementById('deviceHint').innerHTML=ic('gamepad')+' Mando conectado';
+  document.getElementById('hint').textContent='Cruceta o stick para mover · Start: pausa · A: aceptar';
+});
+
+// ===================== RÉCORDS (Top 5 local) =====================
+// localStorage puede fallar (modo privado, almacenamiento bloqueado): siempre con try/catch
+function storeGet(k,def){ try{ const v=localStorage.getItem(k); return v===null?def:v; }catch(e){ return def; } }
+function storeSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function getTop5(){
+  try{
+    const arr=JSON.parse(storeGet('smc_top5','[]'));
+    if(Array.isArray(arr) && arr.length) return arr;
+  }catch(e){}
+  // Migración: si solo existía el récord antiguo, lo convierte en la primera entrada
+  const old=parseInt(storeGet('smc_best','0'),10);
+  return old>0 ? [{score:old, who:'Récord anterior', where:'—', date:''}] : [];
+}
+function playerLabel(){ return selectedChar===0 ? 'Stitch '+SKINS[selectedSkin].name : CHARS[selectedChar].name; }
+function saveTopScore(){
+  const entry={score, who:playerLabel(), where:survivalMode?('Oleada '+wave):('Nivel '+(levelIndex+1)), date:new Date().toLocaleDateString('es'), id:Date.now()+'-'+Math.random().toString(36).slice(2,7)};
+  const list=getTop5().concat(entry).sort((a,b)=>b.score-a.score).slice(0,5);
+  storeSet('smc_top5',JSON.stringify(list));
+  return list.some(e=>e.id===entry.id) ? entry.id : null;
+}
+function renderTop5(elId,highlightId){
+  const el=document.getElementById(elId); if(!el) return;
+  const list=getTop5();
+  el.innerHTML = list.length
+    ? list.map((e,i)=>`<li class="${e.id&&e.id===highlightId?'new':''}"><span>${i<3?ic('medal'+(i+1)):(i+1)+'.'} <b>${e.score}</b></span><span class="who">${e.who} · ${e.where}${e.date?' · '+e.date:''}</span></li>`).join('')
+    : '<li><span class="who">Aún no hay récords. ¡Sé el primero!</span></li>';
+}
+
+// ===================== SELECTOR DE NIVEL =====================
+// Todos los niveles se pueden elegir; los superados llevan ✓ (guardado en localStorage).
+// El nivel elegido solo afecta a la aventura: Supervivencia siempre empieza en la oleada 1.
+let selectedLevel=0;
+function getDoneLevels(){ try{ const a=JSON.parse(storeGet('smc_done','[]')); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function markLevelDone(i){ const d=getDoneLevels(); if(!d.includes(i)){ d.push(i); storeSet('smc_done',JSON.stringify(d)); } }
+function buildLevelSelect(){
+  const wrap=document.getElementById('levelSelect'); if(!wrap) return;
+  const done=getDoneLevels();
+  wrap.innerHTML='';
+  LEVELS.forEach((L,i)=>{
+    const b=document.createElement('button');
+    b.className='lvlBtn'+(i===selectedLevel?' sel':''); b.type='button'; b.setAttribute('aria-pressed',String(i===selectedLevel)); b.setAttribute('aria-label',L.name);
+    b.title=L.name;
+    b.innerHTML=`<span class="ico">${ic(L.icon||'map')}</span>${i===BOSS_LEVEL?'Jefe':'Nivel '+(i+1)}`+(done.includes(i)?'<span class="done">'+ic('check')+'</span>':'');
+    b.addEventListener('click',()=>{ selectedLevel=i; buildLevelSelect(); document.querySelectorAll('#levelSelect .lvlBtn')[i].focus(); });
+    wrap.appendChild(b);
+  });
+  const L=LEVELS[selectedLevel];
+  document.getElementById('levelPickName').innerHTML=ic(L.icon||'map')+' '+escapeHtml(L.name)+(done.includes(selectedLevel)?' · '+ic('check')+' superado':'');
+  document.getElementById('startBtn').textContent = selectedLevel===0 ? '¡Comenzar aventura!' : `¡Empezar en ${selectedLevel===BOSS_LEVEL?'el jefe':'el nivel '+(selectedLevel+1)}!`;
+}
+
+// ===================== MENÚ DE PAUSA / NAVEGACIÓN =====================
+function openPauseMenu(){
+  if(!gameStarted||gameOver||levelComplete) return;
+  paused=true;
+  document.getElementById('pauseBtn').innerHTML=ic('play');
+  const last = !survivalMode && levelIndex+1>=LEVELS.length;
+  document.getElementById('pauseInfo').innerHTML = (survivalMode
+    ? `Oleada ${wave} · ${LEVELS[levelIndex].name} · `
+    : `Nivel ${levelIndex+1} de ${LEVELS.length} · ${LEVELS[levelIndex].name} · `)+ic('star')+' '+score;
+  const skip=document.getElementById('skipBtn');
+  skip.innerHTML = ic('next',PX_COLORS.k)+(survivalMode ? 'Siguiente oleada' : (last ? 'Es el último nivel' : 'Siguiente nivel'));
+  skip.disabled = last;
+  showOverlay('pauseOverlay',true);
+}
+function closePauseMenu(){
+  showOverlay('pauseOverlay',false);
+  paused=false;
+  document.getElementById('pauseBtn').innerHTML=ic('pause');
+}
+// Salta al siguiente nivel u oleada sin bonus de nivel (los puntos ya ganados se conservan)
+function skipLevel(){
+  if(!survivalMode && levelIndex+1>=LEVELS.length) return;
+  closePauseMenu();
+  if(survivalMode){
+    wave++; difficulty=1+(wave-1)*0.15;
+    levelIndex=survivalLevel(wave);
+  } else {
+    levelIndex++;
+  }
+  loadLevel(levelIndex);
+}
+// Vuelve a empezar el nivel actual con preguntas nuevas; se pierden los puntos ganados en él
+function restartLevel(){
+  closePauseMenu();
+  score=levelStartScore; document.getElementById('score').textContent=score;
+  loadLevel(levelIndex);
+}
+// Abandona la partida y vuelve a la pantalla de inicio (no guarda la puntuación)
+function goToMenu(){
+  gameStarted=false; paused=false; gameOver=false; levelComplete=false; banner=null;
+  ['pauseOverlay','levelOverlay','endOverlay'].forEach(id=>showOverlay(id,false));
+  document.getElementById('pauseBtn').innerHTML=ic('pause');
+  const top=getTop5();
+  document.getElementById('bestScore').textContent = top.length ? top[0].score : '0';
+  renderTop5('topListStart',null);
+  buildCharSelect(); buildSkinSelect(); buildLevelSelect();
+  showOverlay('startOverlay',true);
+}
+
+// ===================== UI =====================
+// Muestra u oculta una pantalla. Mientras haya alguna abierta, el juego de fondo queda
+// inerte (Tab no se escapa a él) y el foco pasa al botón principal de la ventana.
+const OVERLAYS=['startOverlay','pauseOverlay','levelOverlay','endOverlay'];
+function showOverlay(id,show){
+  const el=document.getElementById(id);
+  el.style.display=show?'flex':'none';
+  const anyOpen=OVERLAYS.some(o=>document.getElementById(o).style.display!=='none');
+  document.getElementById('app').inert=anyOpen;
+  if(show){
+    const first=el.querySelector('.btn:not(:disabled)');
+    if(first && id!=='startOverlay') setTimeout(()=>first.focus({preventScroll:true}),0);
+  } else if(el.contains(document.activeElement)) document.activeElement.blur();
+}
+// Suma el bonus si el nivel se completó sin golpes; devuelve true si se ganó
+function applyPerfectBonus(){
+  if(levelHits>0) return false;
+  score+=PERFECT_BONUS; document.getElementById('score').textContent=score;
+  return true;
+}
+function showLevelSummary(){
+  const perfect=applyPerfectBonus();
+  if(!survivalMode) markLevelDone(levelIndex);
+  if(survivalMode){
+    sfxVictory();
+    wave++;
+    difficulty=1+(wave-1)*0.15;
+    score+=250*wave;
+    document.getElementById('score').textContent=score;
+    levelIndex=survivalLevel(wave);
+    loadLevel(levelIndex);
+    if(perfect && banner){ banner.sub='Oleada perfecta: +'+PERFECT_BONUS; banner.subIcon='sparkle'; }
+    return;
+  }
+  sfxVictory();
+  const L=LEVELS[levelIndex];
+  document.getElementById('levelTitle').textContent = levelIndex+1>=LEVELS.length ? '¡Fin del juego!' : 'Nivel completado';
+  document.getElementById('levelDesc').textContent = L.name;
+  document.getElementById('levelSummary').innerHTML = `Puntuación: <b>${score}</b><br>Vidas: <b>${lives}</b><br>Tiempo restante: <b>${Math.ceil(timer)}s</b>`+
+    (perfect?`<br>${ic('sparkle')} <b>¡Nivel perfecto!</b> Sin golpes: +${PERFECT_BONUS}`:'');
+  const btn=document.getElementById('nextLevelBtn');
+  if(levelIndex+1>=LEVELS.length){ btn.textContent='Ver resultado final'; btn.onclick=()=>{ showOverlay('levelOverlay',false); showEnd(true); }; }
+  else { btn.textContent='Siguiente nivel'; btn.onclick=()=>{ showOverlay('levelOverlay',false); levelIndex++; loadLevel(levelIndex); }; }
+  showOverlay('levelOverlay',true);
+}
+function showEnd(win){
+  if(win) sfxVictory(); 
+  document.getElementById('endTitle').innerHTML = win?ic('trophy')+' ¡Victoria!':ic('skull')+(survivalMode?' Supervivencia terminada':' Game Over');
+  const newEntry=saveTopScore();
+  const best=getTop5().length ? getTop5()[0].score : score;
+  storeSet('smc_best',String(best)); // compatibilidad con el récord antiguo
+  const bs=document.getElementById('bestScore'); if(bs) bs.textContent=best;
+  renderTop5('topListEnd',newEntry);
+  renderTop5('topListStart',null);
+  document.getElementById('endSummary').innerHTML = `Puntuación final: <b>${score}</b><br>Récord: <b>${best}</b><br>${survivalMode?'Oleada alcanzada':'Nivel alcanzado'}: <b>${survivalMode?wave:levelIndex+1}</b><br>Vidas restantes: <b>${lives}</b>`;
+  showOverlay('endOverlay',true);
+}
+
+// char select
+function renderProfile(elId,key,dict){
+  const el=document.getElementById(elId); if(!el) return;
+  const p=dict[key]; if(!p){ el.innerHTML=''; return; }
+  el.innerHTML=`<div class="ptitle">${p.role}</div>`+
+    `<div class="prow"><span class="plabel">Habilidad:</span> ${p.ability} — ${p.abilityDesc}</div>`+
+    `<div class="prow"><span class="plabel good">Fortalezas:</span> ${p.strengths.join(' · ')}</div>`+
+    `<div class="prow"><span class="plabel bad">Debilidades:</span> ${p.weaknesses.join(' · ')}</div>`;
+}
+function buildCharSelect(){
+  const wrap=document.getElementById('charSelect'); wrap.innerHTML='';
+  CHARS.forEach((ch,i)=>{
+    const card=document.createElement('button'); card.type='button'; card.className='charCard'+(i===selectedChar?' sel':'');
+    card.setAttribute('aria-pressed',String(i===selectedChar));
+    const c=document.createElement('canvas'); c.width=90; c.height=90;
+    const cx=c.getContext('2d');
+    if(!drawCharArt(cx,ch.id,45,45,72)){ ch.draw(cx,45,45,28); }
+    card.appendChild(c);
+    const nm=document.createElement('div'); nm.className='name'; nm.textContent=ch.name; card.appendChild(nm);
+    const st=document.createElement('div'); st.className='stat'; st.textContent=ch.desc; card.appendChild(st);
+    card.addEventListener('click',()=>{ selectedChar=i; buildCharSelect(); buildSkinSelect(); document.querySelectorAll('#charSelect .charCard')[i].focus(); });
+    wrap.appendChild(card);
+  });
+  renderProfile('charProfile',CHARS[selectedChar].id,CHAR_PROFILES);
+}
+function buildSkinSelect(){
+  document.getElementById('skinBox').style.display = selectedChar===0 ? 'block' : 'none';
+  const wrap=document.getElementById('skinList'); wrap.innerHTML='';
+  SKINS.forEach((s,i)=>{
+    const b=document.createElement('button');
+    b.className='skinBtn'+(i===selectedSkin?' sel':''); b.type='button'; b.setAttribute('aria-pressed',String(i===selectedSkin));
+    b.innerHTML=`${s.name}<small>${s.desc}</small>`;
+    b.addEventListener('click',()=>{ selectedSkin=i; buildSkinSelect(); buildCharSelect(); document.querySelectorAll('#skinList .skinBtn')[i].focus(); });
+    wrap.appendChild(b);
+  });
+  renderProfile('skinProfile',SKINS[selectedSkin].id,SKIN_PROFILES);
+}
+
+// ===================== INIT =====================
+function init(){
+  hydrateIcons();
+  initStars();
+  loadAssets();
+  canvas=document.getElementById('game'); ctx=canvas.getContext('2d');
+  isTouchDevice=detectTouch();
+  touchEnabled=isTouchDevice;
+  const tag=document.getElementById('modeTag');
+  tag.innerHTML = isTouchDevice ? ic('phone')+' Modo móvil detectado' : ic('monitor')+' Modo PC detectado';
+  document.getElementById('touchToggle').checked=touchEnabled;
+  document.getElementById('touchLabel').textContent=touchEnabled?'Activado':'Desactivado';
+  document.getElementById('touchToggle').addEventListener('change',e=>{
+    touchEnabled=e.target.checked;
+    document.getElementById('touchLabel').textContent=touchEnabled?'Activado':'Desactivado';
+    applyTouchUI();
+  });
+  buildCharSelect();
+  buildSkinSelect();
+  buildLevelSelect();
+  applyTouchUI();
+  document.getElementById('app').inert=true; // el menú de inicio está abierto al cargar
+  function startGame(surv){
+    ensureAudio();
+    showOverlay('startOverlay',false);
+    showOverlay('endOverlay',false);
+    showOverlay('levelOverlay',false);
+    gameStarted=true; paused=false; gameOver=false;
+    survivalMode=surv; wave=1; difficulty=1;
+    levelIndex=surv?0:selectedLevel; score=0; lives=5;
+    questionDeck=[]; usedQuestions.clear();
+    document.getElementById('pauseBtn').innerHTML=ic('pause');
+    document.getElementById('score').textContent=0; document.getElementById('lives').textContent=5;
+    loadLevel(levelIndex);
+    if(!loopStarted){ loopStarted=true; requestAnimationFrame(loop); }
+  }
+  document.getElementById('startBtn').addEventListener('click',()=>startGame(false));
+  document.getElementById('survivalBtn').addEventListener('click',()=>startGame(true));
+  // Silencio guardado entre partidas
+  muted = storeGet('smc_muted','0')==='1';
+  document.getElementById('muteBtn').innerHTML=ic(muted?'mute':'sound');
+  document.getElementById('muteBtn').setAttribute('aria-label',muted?'Activar sonido':'Silenciar sonido');
+  document.getElementById('muteBtn').addEventListener('click',()=>{
+    muted=!muted; document.getElementById('muteBtn').innerHTML=ic(muted?'mute':'sound');
+    document.getElementById('muteBtn').setAttribute('aria-label',muted?'Activar sonido':'Silenciar sonido');
+    if(masterGain) masterGain.gain.value=muted?0:0.25;
+    storeSet('smc_muted',muted?'1':'0');
+  });
+  document.getElementById('pauseBtn').addEventListener('click',()=>{ paused ? closePauseMenu() : openPauseMenu(); });
+  document.getElementById('resumeBtn').addEventListener('click',closePauseMenu);
+  document.getElementById('skipBtn').addEventListener('click',skipLevel);
+  document.getElementById('restartLvlBtn').addEventListener('click',restartLevel);
+  document.getElementById('menuBtn').addEventListener('click',goToMenu);
+  document.getElementById('levelMenuBtn').addEventListener('click',goToMenu);
+  document.getElementById('endMenuBtn').addEventListener('click',goToMenu);
+  document.getElementById('replayBtn').addEventListener('click',()=>startGame(survivalMode));
+  document.getElementById('deviceHint').textContent = isTouchDevice?'Modo Móvil':'Modo PC: Usa Flechas o WASD';
+  document.getElementById('bestScore').textContent = getTop5().length ? getTop5()[0].score : '0';
+  renderTop5('topListStart',null);
+  document.getElementById('hint').textContent = isTouchDevice?'D-Pad o Swipe sobre el canvas':'Flechas / WASD para mover';
+  window.addEventListener('resize',()=>{ resizeCanvas(); });
+  window.addEventListener('orientationchange',()=>{ setTimeout(resizeCanvas,200); });
+}
+
+function applyTouchUI(){
+  const dpad=document.getElementById('dpad');
+  dpad.style.display = touchEnabled ? 'grid' : 'none';
+  document.getElementById('hint').textContent = touchEnabled ? 'D-Pad o Swipe sobre el canvas' : 'Flechas / WASD para mover';
+  document.getElementById('deviceHint').textContent = touchEnabled ? 'Controles táctiles activos' : 'Modo PC: Usa Flechas o WASD';
+}
+
+function loop(tsNow){
+  if(!lastTime) lastTime=tsNow;
+  const dt=Math.min(40, tsNow-lastTime);
+  lastTime=tsNow;
+  if(gameStarted && !gameOver && !levelComplete){
+    update(dt);
+  }
+  pollGamepad();
+  updateParticles(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+init();
+resizeCanvas();
+
+// ===================== INSTALAR EN EL MÓVIL (PWA) =====================
+// Android/Chrome: el navegador avisa con 'beforeinstallprompt' y mostramos el botón.
+// iPhone/iPad: Safari no tiene ese aviso, así que el botón muestra cómo hacerlo a mano.
+// Si el juego ya se abre como app instalada, no se muestra nada.
+(function setupInstall(){
+  const box=document.getElementById('installBox'), btn=document.getElementById('installBtn'), iosHint=document.getElementById('iosHint');
+  const standalone=window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches || navigator.standalone===true;
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  let deferred=null;
+  if(standalone) return;
+  window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferred=e; box.hidden=false; });
+  if(isIOS) box.hidden=false;
+  btn.addEventListener('click',async()=>{
+    if(deferred){
+      deferred.prompt();
+      const choice=await deferred.userChoice.catch(()=>null);
+      deferred=null;
+      if(choice && choice.outcome==='accepted') box.hidden=true;
+    } else {
+      iosHint.hidden=false;
+    }
+  });
+  window.addEventListener('appinstalled',()=>{ box.hidden=true; });
+})();
+// El service worker guarda el juego para abrirlo sin conexión (solo funciona en http/https)
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
+</script>
+</body>
+</html>

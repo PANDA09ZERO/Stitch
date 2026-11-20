@@ -1,0 +1,5 @@
+# Solo se publica el juego: index.html, sw.js, manifest, icons/ y personajes/ (imágenes).
+# La documentación interna y los archivos de pruebas no se suben.
+*.md
+.playwright-mcp
+assets
