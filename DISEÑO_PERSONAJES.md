@@ -1,4 +1,4 @@
-# 📘 Diseño de Personajes — Stitch Maze Chase
+# 📘 Diseño de Personajes — Stitch Game
 
 > Documento base de diseño. Define **habilidades, fortalezas y debilidades** de cada personaje y skin para guiar la construcción futura del juego.
 > Fecha: 2026-11-19

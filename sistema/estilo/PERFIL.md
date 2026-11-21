@@ -26,7 +26,7 @@
 
 ## Piezas
 
-- **Título (el elemento estrella):** «Stitch» en mango con relieve escalonado de hibisco y tinta, «Maze Chase» en laguna, y una franja de olas pixeladas animada. Es la única animación decorativa.
+- **Título (el elemento estrella):** «Stitch» en mango con relieve escalonado de hibisco y tinta, «Game» en laguna, y una franja de olas pixeladas animada. Es la única animación decorativa.
 - **Pasos numerados:** los encabezados del menú (personaje, estilo, dónde empezar) se numeran solos con un contador CSS que solo cuenta los pasos visibles (con Angel o Lilo no aparece «estilo» y la numeración sigue siendo 1, 2).
 - **Barra de acciones fija:** «¡Comenzar aventura!» y «Supervivencia» quedan siempre visibles al pie del menú.
 - **Botones de recreativa:** borde de tinta, esquinas de 4 px y sombra dura que se hunde al pulsar.

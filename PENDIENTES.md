@@ -1,4 +1,4 @@
-# ✅ Pendientes — Stitch Maze Chase
+# ✅ Pendientes — Stitch Game
 
 Tareas de `PROMPT_PARA_CLAUDE_v2.md`. Marca `[x]` al completar.
 

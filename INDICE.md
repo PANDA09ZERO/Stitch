@@ -1,4 +1,4 @@
-# 📚 Índice de documentación — Stitch Maze Chase
+# 📚 Índice de documentación — Stitch Game
 
 Este índice reúne todas las fichas de diseño del proyecto. Cada carpeta contiene un `PERFIL.md` con habilidades, fortalezas y debilidades (o efecto, balance y detalles técnicos).
 

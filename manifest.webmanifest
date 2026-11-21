@@ -1,6 +1,6 @@
 {
-  "name": "Stitch Maze Chase",
-  "short_name": "Maze Chase",
+  "name": "Stitch Game",
+  "short_name": "Stitch Game",
   "description": "Juego de laberinto para aprender inglés: corre a la respuesta correcta antes de que te atrapen.",
   "lang": "es",
   "start_url": "./index.html",

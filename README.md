@@ -1,4 +1,4 @@
-# Stitch Maze Chase
+# Stitch Game
 
 Juego de laberinto para aprender inglés: lee la pregunta, corre a la zona con la respuesta correcta (A, B, C o D) y escapa de los villanos de la Federación.
 
