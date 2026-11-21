@@ -49,6 +49,10 @@ html,body{height:100%;width:100%;overflow:hidden;overscroll-behavior:none;backgr
 #hud button{font-family:var(--pixel);background:var(--ink);color:var(--sand);border:2px solid var(--lagoon);border-radius:4px;width:44px;height:40px;cursor:pointer;font-size:15px;box-shadow:0 3px 0 #000}
 #hud button:active{transform:translateY(2px);box-shadow:0 1px 0 #000}
 #canvasWrap{flex:1;position:relative;overflow:hidden;min-height:0;background:#000}
+/* Joystick táctil flotante (aparece donde se toca) */
+#joy{position:absolute;left:0;top:0;width:96px;height:96px;margin:-48px 0 0 -48px;border-radius:50%;display:none;pointer-events:none;z-index:3;
+  background:radial-gradient(circle,rgba(255,241,208,.10) 0 60%,rgba(255,241,208,.18) 61%);border:2px solid rgba(45,226,230,.55);box-shadow:0 0 0 2px rgba(7,8,33,.35)}
+#joyKnob{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(255,182,39,.55);border:2px solid rgba(7,8,33,.55)}
 #game{display:block;width:100%;height:100%;touch-action:none;image-rendering:pixelated;image-rendering:crisp-edges}
 
 /* ===== Panel inferior: pregunta y controles ===== */
@@ -233,7 +237,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:999;ba
     <button id="muteBtn" aria-label="Silenciar sonido"><span data-icon="sound"></span></button>
   </div>
   <div id="timeBar"><div id="timeFill"></div></div>
-  <div id="canvasWrap"><canvas id="game" role="img" aria-label="Laberinto del juego. Lleva a tu personaje a la zona A, B, C o D con la respuesta correcta."></canvas></div>
+  <div id="canvasWrap"><canvas id="game" role="img" aria-label="Laberinto del juego. Lleva a tu personaje a la zona A, B, C o D con la respuesta correcta."></canvas><div id="joy" aria-hidden="true"><div id="joyKnob"></div></div></div>
   <div id="bottom">
     <div id="questionPanel" aria-live="polite">Cargando...</div>
     <ol id="answers" class="answers" aria-label="Respuestas"></ol>
@@ -268,7 +272,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:999;ba
     </div>
     <p class="meta">Récord: <b id="bestScore">0</b></p>
     <ol class="top5" id="topListStart"></ol>
-    <p class="meta">Teclado: flechas o WASD. Móvil: desliza el dedo sobre el laberinto. Mando: cruceta o stick.</p>
+    <p class="meta">Teclado: flechas o WASD. Móvil: toca y arrastra el dedo en el laberinto (joystick). Mando: cruceta o stick.</p>
     <div class="actions">
       <button class="btn" id="startBtn">¡Comenzar aventura!</button>
       <button class="btn secondary" id="survivalBtn"><span data-icon="infinity" data-mono="k"></span>Supervivencia</button>
@@ -1251,6 +1255,7 @@ function endReading(){
 }
 const PERFECT_BONUS=500; // nivel completado sin recibir golpes de enemigos
 let isTouchDevice=false, selectedChar=0, selectedSkin=0, gameStarted=false;
+let doorMsgT=0;
 let lastTime=0, swipeStart=null, particles=[], stars=[], loopStarted=false;
 let playerStart={x:1,y:1};
 
@@ -1707,6 +1712,18 @@ function moveEntity(obj,dt=16.67){
     obj.dir={x:nd.x,y:nd.y}; obj.nextDir={x:0,y:0};
   }
   if(speed<=0) return;
+  // Giro con margen (solo el jugador): si pide girar justo después de pasar el centro
+  // de un cruce (hasta 1/3 de casilla), vuelve al centro y gira. Así el giro no se
+  // pierde por pulsar o deslizar un pelín tarde (sensación de control "desfasado").
+  if(obj===player && wants && obj.dir.x!==-nd.x && obj.dir.y!==-nd.y){
+    const ax=obj.dir.x!==0?'x':'y';
+    const passed=(obj[ax]-tileCenter(obj[ax]))*obj.dir[ax];
+    const t=tileOf(obj);
+    if(passed>0 && passed<=ts*.34 && !isWall(t.x+nd.x,t.y+nd.y)){
+      obj[ax]=tileCenter(obj[ax]);
+      obj.dir={x:nd.x,y:nd.y}; obj.nextDir={x:0,y:0};
+    }
+  }
   const axis=obj.dir.x!==0?'x':'y', other=axis==='x'?'y':'x';
   const sign=obj.dir[axis];
   obj[other]=tileCenter(obj[other]); // siempre centrado en su carril
@@ -1914,7 +1931,7 @@ function awayFromPlayer(e,dirs){
   for(const d of dirs){ const nd=Math.abs(pt.x-(t.x+d.x))+Math.abs(pt.y-(t.y+d.y)); if(nd>bestD){bestD=nd;best=d;} }
   return best;
 }
-// Habilidades automáticas (sin botón: funcionan igual con teclado, D-Pad y swipe)
+// Habilidades automáticas (sin botón: funcionan igual con teclado, joystick táctil y mando)
 function updateAbilities(dt){
   const s=dt/1000;
   if(ab.cd>0) ab.cd-=s;
@@ -2019,6 +2036,8 @@ function update(dt){
   if(stun>0) stun-=dt/1000;
   if(speedBoost>0) speedBoost-=dt/1000;
   updateAbilities(dt);
+  // Joystick mantenido: se vuelve a pedir su dirección para girar en el próximo cruce
+  if(joy.dir && (player.dir.x!==joy.dir.x || player.dir.y!==joy.dir.y)) player.nextDir={x:joy.dir.x,y:joy.dir.y};
   if(player.warp) updateWarp(dt); else moveEntity(player,dt);
   if(player.dir.x!==0) player.facing=player.dir.x;
   // Polvo a los pies al correr
@@ -2082,14 +2101,21 @@ function update(dt){
       sfxCollect(); spawnParticles(kx,ky,'#ffe066',16);
     }
   }
+  // Puertas: se abren al llegar a una casilla pegada a ellas (el personaje se para en el
+  // centro de la casilla vecina, a 1 casilla justa; antes se pedía < 0,8 y nunca abría).
+  if(doorMsgT>0) doorMsgT-=dt/1000;
+  const ptd=tileOf(player);
+  const nextToDoor=d=>!d.open && Math.abs(ptd.x-d.tx)+Math.abs(ptd.y-d.ty)<=1;
+  if(!(hasKey||ab.voodoo) && doorMsgT<=0 && doors.some(nextToDoor)){
+    doorMsgT=3; floatText('¡Busca la llave!','#ffe066','key'); sfxWrong();
+  }
   if(hasKey||ab.voodoo){
     for(const d of doors){
-      if(d.open) continue;
-      const dx=d.tx*ts+ts/2, dy=d.ty*ts+ts/2;
-      if(Math.hypot(player.x-dx,player.y-dy)<ts*.8){
+      if(nextToDoor(d)){
+        const dx=d.tx*ts+ts/2, dy=d.ty*ts+ts/2;
         d.open=true;
         // Se gasta primero la llave K; el vudú de Lilo se guarda si hay llave
-        if(hasKey) hasKey=false;
+        if(hasKey){ hasKey=false; floatText('¡Puerta abierta!','#ffe066','key'); }
         else { ab.voodoo=false; floatText('¡Vudú!','#ff6b6b','wand'); }
         sfxPower(); spawnParticles(dx,dy,'#ffe066',22);
         break;
@@ -2405,32 +2431,51 @@ document.addEventListener('keydown',e=>{
   if(d){ e.preventDefault(); setDir(d.x,d.y); }
   if(e.key==='p'||e.key==='P'||e.key==='Escape'){ document.getElementById('pauseBtn').click(); }
 });
-// swipe
+// ===================== JOYSTICK TÁCTIL =====================
+// Joystick "flotante": aparece semitransparente donde se apoya el dedo y se mueve
+// arrastrando. Mientras se mantiene inclinado, el personaje gira en cuanto el camino
+// lo permite (no hace falta volver a deslizar). Si el dedo se aleja mucho, la base
+// lo sigue, así cambiar de sentido es inmediato. Un deslizamiento rápido también vale.
 const canvasEl=document.getElementById('game');
-// La distancia mínima del gesto depende del tamaño de pantalla (5 % del lado corto,
-// entre 14 y 40 px). Se reconoce ya durante el movimiento, así se pueden encadenar giros
-// sin levantar el dedo.
-function swipeThreshold(){ return Math.max(14, Math.min(40, Math.min(innerWidth,innerHeight)*0.05)); }
-function trySwipe(t){
-  const dx=t.clientX-swipeStart.x, dy=t.clientY-swipeStart.y;
-  if(Math.hypot(dx,dy)<swipeThreshold()) return false;
-  if(Math.abs(dx)>Math.abs(dy)){ setDir(dx>0?1:-1,0); } else { setDir(0,dy>0?1:-1); }
-  return true;
+const joyEl=document.getElementById('joy'), joyKnob=document.getElementById('joyKnob');
+const JOY_R=42, JOY_DEAD=9; // recorrido del mando y zona muerta (px)
+let joy={id:null, bx:0, by:0, dir:null};
+function joyShow(x,y,kx,ky){
+  const r=document.getElementById('canvasWrap').getBoundingClientRect();
+  joyEl.style.display='block';
+  joyEl.style.transform=`translate(${x-r.left}px,${y-r.top}px)`;
+  joyKnob.style.transform=`translate(${kx}px,${ky}px)`;
 }
-canvasEl.addEventListener('touchstart',e=>{ e.preventDefault(); if(e.touches.length){ swipeStart={x:e.touches[0].clientX,y:e.touches[0].clientY}; } },{passive:false});
+function joyUpdate(t){
+  let dx=t.clientX-joy.bx, dy=t.clientY-joy.by;
+  const d=Math.hypot(dx,dy);
+  if(d>JOY_R){ // la base persigue al dedo
+    joy.bx=t.clientX-dx/d*JOY_R; joy.by=t.clientY-dy/d*JOY_R;
+    dx=dx/d*JOY_R; dy=dy/d*JOY_R;
+  }
+  joyShow(joy.bx,joy.by,dx,dy);
+  if(d<JOY_DEAD) return;
+  // Eje dominante, con un poco de margen para que no tiemble en las diagonales
+  const horiz = joy.dir && joy.dir.x!==0 ? Math.abs(dx)*1.15>=Math.abs(dy) : Math.abs(dx)>Math.abs(dy)*1.15;
+  const nd = horiz ? {x:dx>0?1:-1,y:0} : {x:0,y:dy>0?1:-1};
+  if(!joy.dir || joy.dir.x!==nd.x || joy.dir.y!==nd.y){ joy.dir=nd; setDir(nd.x,nd.y); }
+}
+function joyEnd(){ joy.id=null; joy.dir=null; joyEl.style.display='none'; }
+canvasEl.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  if(joy.id!==null) return;
+  const t=e.changedTouches[0];
+  joy.id=t.identifier; joy.bx=t.clientX; joy.by=t.clientY; joy.dir=null;
+  joyShow(joy.bx,joy.by,0,0);
+},{passive:false});
 canvasEl.addEventListener('touchmove',e=>{
   e.preventDefault();
-  if(!swipeStart||!e.touches.length) return;
-  const t=e.touches[0];
-  if(trySwipe(t)) swipeStart={x:t.clientX,y:t.clientY};
+  for(const t of e.changedTouches) if(t.identifier===joy.id) joyUpdate(t);
 },{passive:false});
-canvasEl.addEventListener('touchend',e=>{
-  if(!swipeStart) return;
-  if(e.changedTouches.length) trySwipe(e.changedTouches[0]);
-  swipeStart=null;
-},{passive:true});
-// iPhone corta el gesto a veces (llamada, notificación…): se olvida el inicio del dedo
-canvasEl.addEventListener('touchcancel',()=>{ swipeStart=null; },{passive:true});
+function joyTouchEnd(e){ for(const t of e.changedTouches) if(t.identifier===joy.id) joyEnd(); }
+canvasEl.addEventListener('touchend',joyTouchEnd,{passive:true});
+// iPhone corta el gesto a veces (llamada, notificación…): se suelta el joystick
+canvasEl.addEventListener('touchcancel',joyTouchEnd,{passive:true});
 // Fuera de los menús (que sí deben poder desplazarse) se bloquea el arrastre de la página,
 // así Safari no mueve ni hace "rebotar" la pantalla mientras se juega.
 document.addEventListener('touchmove',e=>{ if(!e.target.closest('.card')) e.preventDefault(); },{passive:false});
@@ -2712,10 +2757,10 @@ function init(){
   document.getElementById('levelMenuBtn').addEventListener('click',goToMenu);
   document.getElementById('endMenuBtn').addEventListener('click',goToMenu);
   document.getElementById('replayBtn').addEventListener('click',()=>startGame(survivalMode));
-  document.getElementById('deviceHint').textContent = isTouchDevice?'Desliza el dedo para moverte':'Modo PC: Usa Flechas o WASD';
+  document.getElementById('deviceHint').textContent = isTouchDevice?'Toca y arrastra para moverte':'Modo PC: Usa Flechas o WASD';
   document.getElementById('bestScore').textContent = getTop5().length ? getTop5()[0].score : '0';
   renderTop5('topListStart',null);
-  document.getElementById('hint').textContent = isTouchDevice?'Desliza el dedo sobre el laberinto':'Flechas / WASD para mover';
+  document.getElementById('hint').textContent = isTouchDevice?'Joystick: toca y arrastra en el laberinto':'Flechas / WASD para mover';
   window.addEventListener('resize',()=>{ resizeCanvas(); });
   window.addEventListener('orientationchange',()=>{ setTimeout(resizeCanvas,200); });
 }

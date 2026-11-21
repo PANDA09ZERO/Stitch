@@ -25,7 +25,7 @@
 
 - En `loadLevel`, el tile `X` se convierte en espacio y se registra en `doors[]` con `open:false`.
 - `isBlocked(tx,ty)` devuelve `true` si existe una puerta en esa casilla con `!open`.
-- Al acercarse con llave: `d.open=true; hasKey=false`.
+- Se abre al llegar a una casilla pegada a la puerta (distancia de 1 casilla en horizontal o vertical) con llave: `d.open=true; hasKey=false` y aviso «¡Puerta abierta!». Sin llave aparece «¡Busca la llave!» (como mucho cada 3 s).
 - Ya abierta, se dibuja como un marco translúcido (`rgba(255,224,102,.55)`) y no bloquea.
 
 ---
