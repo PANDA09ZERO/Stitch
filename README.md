@@ -9,7 +9,7 @@ Juego de laberinto para aprender inglés: lee la pregunta, corre a la zona con l
 - 7 niveles (Playa, Casa, Nave, Luau, Estación, Volcán y el jefe final) y modo Supervivencia por oleadas.
 - 387 preguntas de vocabulario, frases y gramática, sin repeticiones y cada vez más difíciles.
 - Stitch con 11 estilos, Angel y Lilo, cada uno con su habilidad.
-- Teclado (flechas o WASD), cruceta táctil, deslizar el dedo y mando.
+- Teclado (flechas o WASD), deslizar el dedo sobre el laberinto y mando.
 
 ## Cómo está hecho
 

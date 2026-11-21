@@ -37,7 +37,7 @@
   --turq:var(--lagoon);--coral:var(--hibiscus);--pink:var(--hibiscus);--dark:var(--night);--panel:var(--night2)
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
-html,body{height:100%;width:100%;overflow:hidden;background:var(--night);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--sand)}
+html,body{height:100%;width:100%;overflow:hidden;overscroll-behavior:none;background:var(--night);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--sand)}
 :focus-visible{outline:3px solid var(--mango);outline-offset:2px}
 #app{display:flex;flex-direction:column;height:100dvh;width:100vw;overflow:hidden}
 
@@ -57,9 +57,6 @@ html,body{height:100%;width:100%;overflow:hidden;background:var(--night);font-fa
 #subPanel{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}
 #powerStatus{color:var(--mango);font-weight:700}
 #hint{font-size:11px;color:var(--muted)}
-#dpad{display:none;align-items:center;justify-content:center;gap:6px;margin-top:4px;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px)}
-#dpad button{width:52px;height:52px;border-radius:6px;border:3px solid var(--ink);background:var(--lagoon);color:var(--ink);font-size:20px;font-weight:900;cursor:pointer;touch-action:none;box-shadow:0 4px 0 var(--ink)}
-#dpad button:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink);background:var(--mango)}
 
 /* ===== Pantallas superpuestas ===== */
 .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:20;padding:16px;
@@ -157,9 +154,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:999;ba
   .answers b{min-width:18px;height:18px;font-size:9px}
   #subPanel{flex-direction:column;align-items:center;text-align:center;font-size:11px}
   #deviceHint,#hint{display:none}
-  #dpad{grid-template-columns:repeat(3,48px);grid-template-rows:repeat(3,48px)}
-  #dpad button{width:48px;height:48px}
-  #dpad div[style]{width:48px!important;height:48px!important}
   .marquee .big{font-size:28px}
 }
 @media (max-width:420px){
@@ -181,7 +175,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:999;ba
 .answers b{font-family:var(--pixel);font-size:11px;color:var(--ink);background:var(--mango);border-radius:3px;min-width:22px;height:22px;display:inline-grid;place-items:center;flex-shrink:0}
 @media (max-width:600px){ #hint,#deviceHint{display:none} #subPanel{justify-content:center} }
 /* Móvil en horizontal: columna lateral estrecha → respuestas en una columna y todo más
-   compacto para que pregunta, respuestas y cruceta quepan sin cortarse.
+   compacto para que pregunta y respuestas quepan sin cortarse.
    (Va después de las reglas generales de .answers para poder sobrescribirlas.) */
 @media (orientation:landscape) and (max-height:520px){
   #bottom{padding:6px 8px;gap:4px}
@@ -189,9 +183,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:999;ba
   .answers{grid-template-columns:1fr;gap:3px}
   .answers li{font-size:13px;padding:2px 6px;gap:6px;border-width:1px}
   .answers b{min-width:17px;height:17px;font-size:8px}
-  #dpad{grid-template-columns:repeat(3,42px);grid-template-rows:repeat(3,42px);gap:4px;margin-top:2px}
-  #dpad button{width:42px;height:42px}
-  #dpad div[style]{width:42px!important;height:42px!important}
   #powerStatus:empty{display:none}
 }
 /* ===== Instalar en el móvil ===== */
@@ -203,7 +194,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:999;ba
 [data-icon]{display:inline-flex}
 .btn .pxi{margin-right:6px}
 #hud button .pxi{width:18px;height:18px;vertical-align:middle}
-#dpad button .pxi{width:22px;height:22px}
 /* ===== Selector de nivel ===== */
 .levels{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:6px 0}
 .lvlBtn{position:relative;background:var(--night2);border:2px solid var(--ink);border-radius:4px;padding:7px 4px 6px;color:var(--sand);cursor:pointer;font-size:11px;font-weight:800;width:76px;box-shadow:3px 3px 0 var(--ink)}
@@ -251,11 +241,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:999;ba
       <span id="powerStatus"></span>
       <span id="deviceHint"></span>
     </div>
-    <div id="dpad">
-      <div></div><button data-dir="up" aria-label="Arriba"><span data-icon="up" data-mono="k"></span></button><div></div>
-      <button data-dir="left" aria-label="Izquierda"><span data-icon="left" data-mono="k"></span></button><div style="width:52px;height:52px"></div><button data-dir="right" aria-label="Derecha"><span data-icon="right" data-mono="k"></span></button>
-      <div></div><button data-dir="down" aria-label="Abajo"><span data-icon="down" data-mono="k"></span></button><div></div>
-    </div>
     <div id="hint"></div>
   </div>
 </div>
@@ -266,11 +251,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:999;ba
     <div class="waves" aria-hidden="true"></div>
     <p class="tagline">Corre a la respuesta correcta en inglés antes de que te atrapen los villanos de la Federación.</p>
     <div id="modeTag" class="modeTag">Detectando dispositivo...</div>
-    <div class="toggle">
-      <label for="touchToggle">Controles táctiles:</label>
-      <input type="checkbox" id="touchToggle">
-      <span id="touchLabel">Auto</span>
-    </div>
     <h2 class="step">Elige personaje</h2>
     <div class="chars" id="charSelect"></div>
     <div class="profile" id="charProfile"></div>
@@ -288,7 +268,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:999;ba
     </div>
     <p class="meta">Récord: <b id="bestScore">0</b></p>
     <ol class="top5" id="topListStart"></ol>
-    <p class="meta">Teclado: flechas o WASD. Móvil: cruceta o desliza el dedo. Mando: cruceta o stick.</p>
+    <p class="meta">Teclado: flechas o WASD. Móvil: desliza el dedo sobre el laberinto. Mando: cruceta o stick.</p>
     <div class="actions">
       <button class="btn" id="startBtn">¡Comenzar aventura!</button>
       <button class="btn secondary" id="survivalBtn"><span data-icon="infinity" data-mono="k"></span>Supervivencia</button>
@@ -1095,16 +1075,41 @@ function loadAssets(){
     ASSETS[k]=null;
     if(!ASSET_MAP[k]) return; // sin arte todavía → respaldo procedural
     const img=new Image();
-    img.onload=()=>{ ASSETS[k]=img; };
+    img.onload=()=>{ ASSETS[k]= k==='background' ? img : trimImage(img); };
     img.onerror=()=>{ ASSETS[k]=null; };
     img.src=ASSET_MAP[k];
   });
 }
+// Recorta el borde transparente de una imagen. Los PNG de Stitch traen márgenes
+// invisibles muy distintos (en Hula el personaje ocupa solo un tercio del lienzo),
+// por eso unos se veían mucho más pequeños que otros. Si no se puede leer la imagen
+// (p. ej. abriendo el archivo sin servidor), se usa tal cual.
+function trimImage(img){
+  try{
+    const w=img.naturalWidth, h=img.naturalHeight;
+    const c=document.createElement('canvas'); c.width=w; c.height=h;
+    const cx=c.getContext('2d'); cx.drawImage(img,0,0);
+    const d=cx.getImageData(0,0,w,h).data;
+    let x0=w, y0=h, x1=-1, y1=-1;
+    for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+      if(d[(y*w+x)*4+3]>16){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; }
+    }
+    if(x1<0) return img;
+    const out=document.createElement('canvas'); out.width=x1-x0+1; out.height=y1-y0+1;
+    out.getContext('2d').drawImage(c,x0,y0,out.width,out.height,0,0,out.width,out.height);
+    return out;
+  }catch(e){ return img; }
+}
 function drawAsset(ctx,img,x,y,size){
   if(!img) return null;
+  // Todas las imágenes ocupan la misma superficie (size×size) sea cual sea su forma.
+  // Antes se encajaban en un cuadrado, así que las imágenes altas y estrechas
+  // (Elvis, Surfer, Hula) salían mucho más pequeñas que las cuadradas (Genio, Uir).
+  // El lado largo se limita a 1.3×size para que no invada demasiado las paredes.
   const ar=img.width/img.height;
-  let w=size, h=size;
-  if(ar>1) h=size/ar; else w=size*ar;
+  let w=size*Math.sqrt(ar), h=size/Math.sqrt(ar);
+  const over=Math.max(w,h)/(size*1.3);
+  if(over>1){ w/=over; h/=over; }
   ctx.drawImage(img, x-w/2, y-h/2, w, h);
   return {x:x-w/2, y:y-h/2, w, h};
 }
@@ -1245,7 +1250,7 @@ function endReading(){
   if(player) floatText('¡Ya!','#ffb627','play');
 }
 const PERFECT_BONUS=500; // nivel completado sin recibir golpes de enemigos
-let touchEnabled=false, isTouchDevice=false, selectedChar=0, selectedSkin=0, gameStarted=false;
+let isTouchDevice=false, selectedChar=0, selectedSkin=0, gameStarted=false;
 let lastTime=0, swipeStart=null, particles=[], stars=[], loopStarted=false;
 let playerStart={x:1,y:1};
 
@@ -1465,6 +1470,11 @@ function drawLilo(ctx,x,y,r){
   ctx.beginPath(); ctx.arc(x+r*.18,y-r*.55,r*.07,0,Math.PI*2); ctx.fill();
   ctx.strokeStyle='#a04040'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(x,y-r*.4,r*.15,.2,Math.PI-.2); ctx.stroke();
 }
+// Tamaño de dibujo de los personajes respecto a la casilla (igual para jugador y villanos)
+const CHAR_DRAW=.85;
+// Los villanos dibujados a mano tienen cuerpos de distinto radio: Gantu (1.2r) se
+// reduce para que todos se vean del mismo tamaño
+const ENEMY_DRAW_SCALE={gantu:.78, jumba:.95, pleakley:1, reuben:1};
 function drawEnemy(ctx,type,x,y,r){
   if(type==='gantu'){
     ctx.fillStyle='#7a8fa6'; ctx.beginPath(); ctx.arc(x,y,r*1.2,0,Math.PI*2); ctx.fill();
@@ -1630,6 +1640,21 @@ function setupQuestion(){
   currentQuestion=levelQuestions[qIndex];
   const idxs=currentQuestion.o.map((_,i)=>i).sort(()=>Math.random()-.5);
   zones.forEach((z,i)=>{ z.optionIndex=idxs[i % idxs.length]; z.correct=(z.optionIndex===currentQuestion.c); z._triggered=false; });
+  // Si el personaje sigue encima de una casilla (acaba de acertar en ella), esa casilla
+  // queda "ya pisada": solo cuenta al salir y volver a entrar. Así la pregunta nueva no
+  // se responde sola (antes contaba como fallo y quitaba una vida). Además la respuesta
+  // correcta nueva nunca cae en la casilla donde está parado.
+  if(player){
+    const here=zones.find(z=>Math.hypot(player.x-(z.tx*ts+ts/2),player.y-(z.ty*ts+ts/2))<ts*.55);
+    if(here){
+      here._triggered=true;
+      if(here.correct && zones.length>1){
+        const other=zones.filter(z=>z!==here)[Math.floor(Math.random()*(zones.length-1))];
+        const t=here.optionIndex; here.optionIndex=other.optionIndex; other.optionIndex=t;
+        here.correct=false; other.correct=true;
+      }
+    }
+  }
   document.getElementById('questionPanel').innerHTML=(CAT_ICONS[currentQuestion.cat]?ic(CAT_ICONS[currentQuestion.cat])+' ':'')+escapeHtml(currentQuestion.q);
   renderAnswers();
   startReading();
@@ -1654,38 +1679,55 @@ function bossPhase(){
   const p=qIndex/total;
   return p<0.34?1:(p<0.67?2:3);
 }
-function canPassPixel(x,y,r){
-  const pts=[[x-r,y-r],[x+r,y-r],[x-r,y+r],[x+r,y+r]];
-  for(const [px,py] of pts){
-    const tx=Math.floor(px/ts), ty=Math.floor(py/ts);
-    if(isWall(tx,ty)) return false;
-  }
-  return true;
-}
-function atCenter(obj){
-  const cx=obj.x-(Math.floor(obj.x/ts)*ts+ts/2);
-  const cy=obj.y-(Math.floor(obj.y/ts)*ts+ts/2);
-  return Math.abs(cx)<2 && Math.abs(cy)<2;
-}
 function tileOf(obj){ return {x:Math.floor(obj.x/ts), y:Math.floor(obj.y/ts)}; }
 
-function moveEntity(obj){
+// Movimiento por "carriles": el personaje siempre va por el centro de los pasillos y
+// solo gira al pasar exactamente por el centro de una casilla. Si en este paso de
+// animación va a cruzar el centro, se coloca justo en él y ahí decide (girar, seguir
+// o pararse ante una pared). Antes había que caer a menos de 2 px del centro: con
+// ciertos tamaños de pantalla (sobre todo iPhone, cuya barra de Safari cambia el alto
+// de la pantalla) el personaje se paraba fuera de ese margen y ya no podía girar más.
+// La velocidad se ajusta al tiempo real (dt) para ir igual a 60 Hz que a 120 Hz.
+function tileCenter(v){ return Math.floor(v/ts)*ts+ts/2; }
+function moveEntity(obj,dt=16.67){
   const phaseBoost = obj.type==='boss' ? (1+0.12*(bossPhase()-1)) : 1;
-  const speed = obj.speed * phaseBoost * (obj===player ? (speedBoost>0?1.6:1)*abilitySpeedMul() : 1) * (obj.stun>0&&obj!==player?0:1);
-  if(obj.nextDir && (obj.nextDir.x!==0||obj.nextDir.y!==0)){
-    if(atCenter(obj)){
-      const t=tileOf(obj);
-      const nx=t.x+obj.nextDir.x, ny=t.y+obj.nextDir.y;
-      if(!isWall(nx,ny)){ obj.dir={...obj.nextDir}; obj.nextDir={x:0,y:0}; }
+  const speed = obj.speed * phaseBoost * (obj===player ? (speedBoost>0?1.6:1)*abilitySpeedMul() : 1) * (obj.stun>0&&obj!==player?0:1) * (dt/16.67);
+  const nd=obj.nextDir;
+  const wants=nd && (nd.x!==0||nd.y!==0);
+  const moving=obj.dir.x!==0||obj.dir.y!==0;
+  // Parado: arranca desde el centro de su casilla si el camino está libre
+  if(!moving){
+    if(!wants) return;
+    const t=tileOf(obj);
+    if(isWall(t.x+nd.x,t.y+nd.y)) return;
+    obj.x=tileCenter(obj.x); obj.y=tileCenter(obj.y);
+    obj.dir={x:nd.x,y:nd.y}; obj.nextDir={x:0,y:0};
+  } else if(wants && nd.x===-obj.dir.x && nd.y===-obj.dir.y){
+    // Media vuelta: se permite en cualquier momento
+    obj.dir={x:nd.x,y:nd.y}; obj.nextDir={x:0,y:0};
+  }
+  if(speed<=0) return;
+  const axis=obj.dir.x!==0?'x':'y', other=axis==='x'?'y':'x';
+  const sign=obj.dir[axis];
+  obj[other]=tileCenter(obj[other]); // siempre centrado en su carril
+  let remaining=speed;
+  const c=tileCenter(obj[axis]);
+  const ahead=(c-obj[axis])*sign; // distancia hasta el centro de esta casilla (si está delante)
+  if(ahead>=0 && ahead<=remaining){
+    obj[axis]=c; remaining-=ahead;
+    const t=tileOf(obj);
+    if(obj!==player){
+      // Villanos: eligen dirección una vez por casilla
+      const key=t.x+','+t.y;
+      if(obj._lastTile!==key){ obj._lastTile=key; obj.dir=enemyChoose(obj); }
+    } else {
+      const n=obj.nextDir;
+      if(n && (n.x!==0||n.y!==0) && !isWall(t.x+n.x,t.y+n.y)){ obj.dir={x:n.x,y:n.y}; obj.nextDir={x:0,y:0}; }
     }
+    if((obj.dir.x===0&&obj.dir.y===0) || isWall(t.x+obj.dir.x,t.y+obj.dir.y)){ obj.dir={x:0,y:0}; return; }
   }
-  if(obj.dir.x!==0||obj.dir.y!==0){
-    let nx=obj.x+obj.dir.x*speed;
-    let ny=obj.y+obj.dir.y*speed;
-    if(!canPassPixel(nx,obj.y,obj.radius)){ nx=obj.x; obj.dir={x:0,y:0}; }
-    if(!canPassPixel(obj.x,ny,obj.radius)){ ny=obj.y; if(obj.dir.x===0) obj.dir={x:0,y:0}; }
-    obj.x=nx; obj.y=ny;
-  }
+  obj.x+=obj.dir.x*remaining;
+  obj.y+=obj.dir.y*remaining;
 }
 
 function enemyChoose(e){
@@ -1977,7 +2019,7 @@ function update(dt){
   if(stun>0) stun-=dt/1000;
   if(speedBoost>0) speedBoost-=dt/1000;
   updateAbilities(dt);
-  if(player.warp) updateWarp(dt); else moveEntity(player);
+  if(player.warp) updateWarp(dt); else moveEntity(player,dt);
   if(player.dir.x!==0) player.facing=player.dir.x;
   // Polvo a los pies al correr
   if(!player.warp && (player.dir.x!==0||player.dir.y!==0) && abilitySpeedMul()>0){
@@ -1997,11 +2039,13 @@ function update(dt){
   }
   for(const e of enemies){
     if(e.stun>0) e.stun-=dt/1000;
-    if(atCenter(e)){
-      const key=tileOf(e).x+','+tileOf(e).y;
-      if(e._lastTile!==key){ e.dir=enemyChoose(e); e._lastTile=key; }
+    // Villano parado (al empezar o tras quedar aturdido): elige camino desde el centro
+    if(e.dir.x===0 && e.dir.y===0 && e.stun<=0){
+      e.x=tileCenter(e.x); e.y=tileCenter(e.y);
+      const t=tileOf(e); e._lastTile=t.x+','+t.y;
+      e.dir=enemyChoose(e);
     }
-    moveEntity(e);
+    moveEntity(e,dt);
     const dx=e.x-player.x, dy=e.y-player.y;
     const dist=Math.hypot(dx,dy);
     if(dist<player.radius+e.radius && invuln<=0 && e.stun<=0 && !player.warp){
@@ -2224,14 +2268,19 @@ function render(){
     if(e.stun>0) ctx.globalAlpha=0.5;
     if(PIXEL_MODE){ drawPixel(ctx,e.type,ex,ey,e.radius*2.6); }
     else {
-      if(!drawAsset(ctx,ASSETS[e.type],ex,ey,e.radius*2.2)){ drawEnemy(ctx,e.type,ex,ey,e.radius); }
+      // Mismo tamaño visual para todos los villanos (antes Gantu se veía mucho más
+      // grande que Pleakley o Jumba); solo el jefe es más grande a propósito.
+      const isBoss=e.type==='boss';
+      const artSize=isBoss ? e.radius*2.2 : ts*CHAR_DRAW;
+      const drawR=isBoss ? e.radius : ts*CHAR_DRAW*.47*(ENEMY_DRAW_SCALE[e.type]||1);
+      if(!drawAsset(ctx,ASSETS[e.type],ex,ey,artSize)){ drawEnemy(ctx,e.type,ex,ey,drawR); }
     }
     ctx.globalAlpha=1;
     if(e.stun>0){ drawPxIcon(ctx,'sparkle',ex,ey-e.radius*1.6,ts*.36); }
   }
   const ppx=offX+player.x, ppy=offY+player.y;
   if(!(invuln>0 && Math.floor(invuln*10)%2===0)){
-    drawPlayerAnimated(ctx,ppx,ppy,player.radius*(PIXEL_MODE?2.6:2.2));
+    drawPlayerAnimated(ctx,ppx,ppy,PIXEL_MODE?player.radius*2.6:ts*CHAR_DRAW);
   }
   for(const p of particles){
     ctx.globalAlpha=Math.max(0,p.life);
@@ -2356,14 +2405,6 @@ document.addEventListener('keydown',e=>{
   if(d){ e.preventDefault(); setDir(d.x,d.y); }
   if(e.key==='p'||e.key==='P'||e.key==='Escape'){ document.getElementById('pauseBtn').click(); }
 });
-// D-pad
-document.querySelectorAll('#dpad button[data-dir]').forEach(b=>{
-  const handler=()=>{ const dir=b.dataset.dir;
-    if(dir==='up') setDir(0,-1); if(dir==='down') setDir(0,1); if(dir==='left') setDir(-1,0); if(dir==='right') setDir(1,0);
-  };
-  b.addEventListener('touchstart',e=>{e.preventDefault();handler();},{passive:false});
-  b.addEventListener('mousedown',handler);
-});
 // swipe
 const canvasEl=document.getElementById('game');
 // La distancia mínima del gesto depende del tamaño de pantalla (5 % del lado corto,
@@ -2376,17 +2417,23 @@ function trySwipe(t){
   if(Math.abs(dx)>Math.abs(dy)){ setDir(dx>0?1:-1,0); } else { setDir(0,dy>0?1:-1); }
   return true;
 }
-canvasEl.addEventListener('touchstart',e=>{ if(e.touches.length){ swipeStart={x:e.touches[0].clientX,y:e.touches[0].clientY}; } },{passive:true});
+canvasEl.addEventListener('touchstart',e=>{ e.preventDefault(); if(e.touches.length){ swipeStart={x:e.touches[0].clientX,y:e.touches[0].clientY}; } },{passive:false});
 canvasEl.addEventListener('touchmove',e=>{
+  e.preventDefault();
   if(!swipeStart||!e.touches.length) return;
   const t=e.touches[0];
   if(trySwipe(t)) swipeStart={x:t.clientX,y:t.clientY};
-},{passive:true});
+},{passive:false});
 canvasEl.addEventListener('touchend',e=>{
   if(!swipeStart) return;
-  trySwipe(e.changedTouches[0]);
+  if(e.changedTouches.length) trySwipe(e.changedTouches[0]);
   swipeStart=null;
 },{passive:true});
+// iPhone corta el gesto a veces (llamada, notificación…): se olvida el inicio del dedo
+canvasEl.addEventListener('touchcancel',()=>{ swipeStart=null; },{passive:true});
+// Fuera de los menús (que sí deben poder desplazarse) se bloquea el arrastre de la página,
+// así Safari no mueve ni hace "rebotar" la pantalla mientras se juega.
+document.addEventListener('touchmove',e=>{ if(!e.target.closest('.card')) e.preventDefault(); },{passive:false});
 
 // ===================== GAMEPAD =====================
 // Cruceta (botones 12-15) o stick izquierdo para moverse, Start (9) para pausar
@@ -2596,7 +2643,7 @@ function buildCharSelect(){
     card.setAttribute('aria-pressed',String(i===selectedChar));
     const c=document.createElement('canvas'); c.width=90; c.height=90;
     const cx=c.getContext('2d');
-    if(!drawCharArt(cx,ch.id,45,45,72)){ ch.draw(cx,45,45,28); }
+    if(!drawCharArt(cx,ch.id,45,45,64)){ ch.draw(cx,45,45,28); }
     card.appendChild(c);
     const nm=document.createElement('div'); nm.className='name'; nm.textContent=ch.name; card.appendChild(nm);
     const st=document.createElement('div'); st.className='stat'; st.textContent=ch.desc; card.appendChild(st);
@@ -2625,20 +2672,11 @@ function init(){
   loadAssets();
   canvas=document.getElementById('game'); ctx=canvas.getContext('2d');
   isTouchDevice=detectTouch();
-  touchEnabled=isTouchDevice;
   const tag=document.getElementById('modeTag');
   tag.innerHTML = isTouchDevice ? ic('phone')+' Modo móvil detectado' : ic('monitor')+' Modo PC detectado';
-  document.getElementById('touchToggle').checked=touchEnabled;
-  document.getElementById('touchLabel').textContent=touchEnabled?'Activado':'Desactivado';
-  document.getElementById('touchToggle').addEventListener('change',e=>{
-    touchEnabled=e.target.checked;
-    document.getElementById('touchLabel').textContent=touchEnabled?'Activado':'Desactivado';
-    applyTouchUI();
-  });
   buildCharSelect();
   buildSkinSelect();
   buildLevelSelect();
-  applyTouchUI();
   document.getElementById('app').inert=true; // el menú de inicio está abierto al cargar
   function startGame(surv){
     ensureAudio();
@@ -2674,32 +2712,29 @@ function init(){
   document.getElementById('levelMenuBtn').addEventListener('click',goToMenu);
   document.getElementById('endMenuBtn').addEventListener('click',goToMenu);
   document.getElementById('replayBtn').addEventListener('click',()=>startGame(survivalMode));
-  document.getElementById('deviceHint').textContent = isTouchDevice?'Modo Móvil':'Modo PC: Usa Flechas o WASD';
+  document.getElementById('deviceHint').textContent = isTouchDevice?'Desliza el dedo para moverte':'Modo PC: Usa Flechas o WASD';
   document.getElementById('bestScore').textContent = getTop5().length ? getTop5()[0].score : '0';
   renderTop5('topListStart',null);
-  document.getElementById('hint').textContent = isTouchDevice?'D-Pad o Swipe sobre el canvas':'Flechas / WASD para mover';
+  document.getElementById('hint').textContent = isTouchDevice?'Desliza el dedo sobre el laberinto':'Flechas / WASD para mover';
   window.addEventListener('resize',()=>{ resizeCanvas(); });
   window.addEventListener('orientationchange',()=>{ setTimeout(resizeCanvas,200); });
 }
 
-function applyTouchUI(){
-  const dpad=document.getElementById('dpad');
-  dpad.style.display = touchEnabled ? 'grid' : 'none';
-  document.getElementById('hint').textContent = touchEnabled ? 'D-Pad o Swipe sobre el canvas' : 'Flechas / WASD para mover';
-  document.getElementById('deviceHint').textContent = touchEnabled ? 'Controles táctiles activos' : 'Modo PC: Usa Flechas o WASD';
-}
-
 function loop(tsNow){
-  if(!lastTime) lastTime=tsNow;
-  const dt=Math.min(40, tsNow-lastTime);
-  lastTime=tsNow;
-  if(gameStarted && !gameOver && !levelComplete){
-    update(dt);
-  }
-  pollGamepad();
-  updateParticles(dt);
-  render();
+  // El siguiente fotograma se pide primero: si algo falla en un fotograma (p. ej. un
+  // error raro del navegador), el juego sigue en vez de quedarse congelado.
   requestAnimationFrame(loop);
+  if(!lastTime) lastTime=tsNow;
+  const dt=Math.max(0, Math.min(40, tsNow-lastTime));
+  lastTime=tsNow;
+  try{
+    if(gameStarted && !gameOver && !levelComplete){
+      update(dt);
+    }
+    pollGamepad();
+    updateParticles(dt);
+    render();
+  }catch(err){ console.error(err); }
 }
 
 init();

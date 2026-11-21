@@ -3,7 +3,7 @@
 // Estrategia: se guarda todo al instalar; después se sirve desde la caché al instante
 // y se actualiza en segundo plano (la siguiente vez que se abra ya sale la versión nueva).
 // Al cambiar archivos del juego, sube VERSION para limpiar la caché antigua.
-const VERSION = 'smc-v1';
+const VERSION = 'smc-v2';
 const ARCHIVOS = [
   './',
   './index.html',
